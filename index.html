@@ -600,10 +600,42 @@ function renderWarnings(){
   else we.classList.add('hidden');
   // 예측
   const pe=document.getElementById('predict-bar'),pv=document.getElementById('predict-val'),pi=document.getElementById('predict-in');
-  if(feeds.length>=3){
+
+  // 30분 이내에 이어진 모유/분유 기록은 같은 수유 세션으로 묶음
+  const orderedFeeds=[...feeds].sort((a,b)=>new Date(a.start_time)-new Date(b.start_time));
+  const sessions=[];
+  const SESSION_GAP=30*60*1000;
+
+  orderedFeeds.forEach(feed=>{
+    const t=new Date(feed.start_time).getTime();
+    const prev=sessions[sessions.length-1];
+
+    if(!prev || t-prev.lastTime>SESSION_GAP){
+      sessions.push({startTime:t,lastTime:t});
+    }else{
+      prev.lastTime=t;
+    }
+  });
+
+  if(sessions.length>=3){
+    const recentSessions=sessions.slice(-6); // 최근 최대 6개 세션 → 간격 최대 5개
     const ivs=[];
-    for(let i=0;i<Math.min(feeds.length-1,5);i++){const d=new Date(feeds[i].start_time)-new Date(feeds[i+1].start_time);if(d>0&&d<8*3600000)ivs.push(d);}
-    if(ivs.length>=2){const avg=ivs.reduce((a,b)=>a+b,0)/ivs.length;const next=new Date(new Date(last.start_time).getTime()+avg);const ml=Math.round((next-Date.now())/60000);pv.textContent=pad(next.getHours())+':'+pad(next.getMinutes());pi.textContent=ml>0?ml+'분 후':'지금쯤이에요!';pe.classList.remove('hidden');}else pe.classList.add('hidden');
+
+    for(let i=recentSessions.length-1;i>0;i--){
+      const d=recentSessions[i].startTime-recentSessions[i-1].startTime;
+      if(d>0&&d<8*3600000)ivs.push(d);
+    }
+
+    if(ivs.length>=2){
+      const avg=ivs.reduce((a,b)=>a+b,0)/ivs.length;
+      const latestSession=sessions[sessions.length-1];
+      const next=new Date(latestSession.startTime+avg);
+      const ml=Math.round((next-Date.now())/60000);
+
+      pv.textContent=pad(next.getHours())+':'+pad(next.getMinutes());
+      pi.textContent=ml>0?ml+'분 후':'지금쯤이에요!';
+      pe.classList.remove('hidden');
+    }else pe.classList.add('hidden');
   }else pe.classList.add('hidden');
 }
 
