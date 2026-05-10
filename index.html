@@ -75,6 +75,11 @@ body.dark .predict-bar{background:#1A1F3A;border-left-color:var(--primary)}
 .predict-bar{background:var(--primary-bg);border-left:3px solid var(--primary);border-radius:0 var(--rs) var(--rs) 0;margin:0 16px 8px;padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between}
 .predict-bar.hidden{display:none}
 .predict-label{color:var(--txt2);font-size:11px}.predict-val{font-weight:700;color:var(--primary);font-size:15px}
+.sleep-active-bar{background:var(--sleep-bg);border-left:3px solid var(--sleep);border-radius:0 var(--rs) var(--rs) 0;margin:0 16px 8px;padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sleep-active-bar.hidden{display:none}
+.sleep-active-label{color:var(--txt2);font-size:11px}
+.sleep-active-val{font-weight:700;color:var(--sleep);font-size:15px}
+.sleep-end-btn{border:none;background:var(--sleep);color:#fff;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
 
 /* LAST ACTIVITY */
 .last-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border)}
@@ -194,6 +199,8 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
 /* TOAST */
 .toast{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(26,29,46,.9);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
+.toast.success{background:#10B981}
+.toast.error{background:#EF4444}
 
 /* PAGES */
 .page{display:none;padding-bottom:140px}.page.show{display:block}
@@ -286,6 +293,13 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
   <div class="predict-bar hidden" id="predict-bar">
     <div><div class="predict-label">다음 수유 예상</div><div class="predict-val" id="predict-val">--:--</div></div>
     <div style="font-size:11px;color:var(--txt2)" id="predict-in"></div>
+  </div>
+  <div class="sleep-active-bar hidden" id="sleep-active-bar">
+    <div>
+      <div class="sleep-active-label">현재 수면 중</div>
+      <div class="sleep-active-val" id="sleep-active-val">--</div>
+    </div>
+    <button class="sleep-end-btn" onclick="quickAdd('sleep')">수면 종료</button>
   </div>
   <div class="date-nav">
     <button class="dnbtn" onclick="shiftDay(-1)">‹</button>
@@ -569,7 +583,7 @@ async function initRealtime(){
 }
 
 // ── RENDER ──
-function render(){renderHeader();renderLastBar();renderWarnings();renderDateNav();renderChips();renderLogs();startSleepTimer();if(currentTab==='stats')renderStats();if(currentTab==='growth')renderGrowth();if(currentTab==='hospital')renderHospital();}
+function render(){renderHeader();renderLastBar();renderWarnings();renderCurrentSleepBar();renderDateNav();renderChips();renderLogs();startSleepTimer();if(currentTab==='stats')renderStats();if(currentTab==='growth')renderGrowth();if(currentTab==='hospital')renderHospital();}
 
 function renderHeader(){
   const name=settings.babyName||'승준이';
@@ -611,6 +625,17 @@ function renderWarnings(){
     for(let i=0;i<Math.min(feeds.length-1,5);i++){const d=new Date(feeds[i].start_time)-new Date(feeds[i+1].start_time);if(d>0&&d<8*3600000)ivs.push(d);}
     if(ivs.length>=2){const avg=ivs.reduce((a,b)=>a+b,0)/ivs.length;const next=new Date(new Date(last.start_time).getTime()+avg);const ml=Math.round((next-Date.now())/60000);pv.textContent=pad(next.getHours())+':'+pad(next.getMinutes());pi.textContent=ml>0?ml+'분 후':'지금쯤이에요!';pe.classList.remove('hidden');}else pe.classList.add('hidden');
   }else pe.classList.add('hidden');
+}
+
+function renderCurrentSleepBar(){
+  const el=document.getElementById('sleep-active-bar');
+  const val=document.getElementById('sleep-active-val');
+  const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
+  if(!ongoing){el.classList.add('hidden');return;}
+  const m=Math.max(0,Math.floor((Date.now()-new Date(ongoing.start_time))/60000));
+  const kind=ongoing.sleep_kind==='night'?'밤잠':'낮잠';
+  val.textContent=`${kind} · ${durLabel(m)}째`;
+  el.classList.remove('hidden');
 }
 
 function renderDateNav(){
@@ -665,12 +690,13 @@ function startSleepTimer(){
   clearInterval(sleepTimerInterval);
   const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
   if(!ongoing)return;
-  sleepTimerInterval=setInterval(()=>{
+  const updateSleepUI=()=>{
     const el=document.getElementById('sleep-timer-'+ongoing.id);
     if(el){const m=Math.floor((Date.now()-new Date(ongoing.start_time))/60000);el.textContent='⏱ '+durLabel(m)+' 경과 중';}
-  },10000);
-  const el=document.getElementById('sleep-timer-'+ongoing.id);
-  if(el){const m=Math.floor((Date.now()-new Date(ongoing.start_time))/60000);el.textContent='⏱ '+durLabel(m)+' 경과 중';}
+    renderCurrentSleepBar();
+  };
+  sleepTimerInterval=setInterval(updateSleepUI,10000);
+  updateSleepUI();
 }
 
 // ── MEMO ──
@@ -678,7 +704,7 @@ function openMemo(id){
   const r=records.find(x=>x.id===id);if(!r)return;
   const memo=prompt('메모 입력 ('+LABEL[r.type]+')',r.memo||'');
   if(memo===null)return;
-  apiPatch(id,{memo}).then(()=>{r.memo=memo;renderLogs();showToast('메모 저장됨');}).catch(()=>showToast('저장 실패'));
+  apiPatch(id,{memo}).then(()=>{r.memo=memo;renderLogs();showToast('메모 저장됨', 'success');}).catch(()=>showToast('저장 실패'));
 }
 
 // ── DATE NAV ──
@@ -689,17 +715,17 @@ async function quickAdd(type,diaperKind){
   const now=new Date(),ds=fmtDate(now),iso=now.toISOString();
   if(type==='sleep'){
     const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
-    if(ongoing){try{await apiPatch(ongoing.id,{end_time:iso});showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,iso)));await loadAll();}catch(e){showToast('오류: '+e.message);}return;}
+    if(ongoing){try{await apiPatch(ongoing.id,{end_time:iso});showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,iso)), 'success');await loadAll();}catch(e){showToast('오류: '+e.message, 'error');}return;}
   }
   const rec={type,date:ds,start_time:iso};
   if(type==='sleep')rec.sleep_kind=autoSleepKind(iso);
   if(type==='diaper')rec.diaper_kind=diaperKind||'urine';
-  try{await apiPost(rec);selDate=now;showToast(EMOJI[type]+' '+LABEL[type]+' 기록됨');await loadAll();}catch(e){showToast('오류: '+e.message);}
+  try{await apiPost(rec);selDate=now;showToast(EMOJI[type]+' '+LABEL[type]+' 기록됨', 'success');await loadAll();}catch(e){showToast('오류: '+e.message, 'error');}
 }
 
 // ── DELETE ──
 async function delRec(id){
-  try{await apiDelete(id);records=records.filter(r=>r.id!==id);render();showToast('삭제됨');}catch(e){showToast('삭제 실패');}
+  try{await apiDelete(id);records=records.filter(r=>r.id!==id);render();showToast('삭제됨', 'success');}catch(e){showToast('삭제 실패', 'error');}
 }
 
 // ── MODAL ──
@@ -824,8 +850,8 @@ async function saveRec(){
     const m=document.getElementById('f-hmemo')?.value;if(m)rec.memo=m;
   }
   closeModal();
-  try{await apiPost(rec);showToast(EMOJI[modalType]+' 저장됨');await loadAll();if(modalType==='growth')renderGrowth();if(modalType==='hospital')renderHospital();}
-  catch(e){showToast('저장 실패: '+e.message);}
+  try{await apiPost(rec);showToast(EMOJI[modalType]+' 저장됨', 'success');await loadAll();if(modalType==='growth')renderGrowth();if(modalType==='hospital')renderHospital();}
+  catch(e){showToast('저장 실패: '+e.message, 'error');}
 }
 
 // ── GROWTH ──
@@ -1081,7 +1107,7 @@ async function handleVoice(txt){
   }
   if(/수면\s*끝|잠\s*깼|기상|일어났/.test(t)){
     const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
-    if(ongoing){await apiPatch(ongoing.id,{end_time:iso});showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,iso)));await loadAll();}
+    if(ongoing){await apiPatch(ongoing.id,{end_time:iso});showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,iso)), 'success');await loadAll();}
     else showToast('진행 중인 수면이 없어요');return;
   }
   if(/수면|잠|낮잠|밤잠/.test(t)){const sk=/밤잠/.test(t)?'night':autoSleepKind(now);await apiPost({type:'sleep',date:ds,start_time:iso,sleep_kind:sk});showToast('😴 '+(sk==='nap'?'낮잠':'밤잠')+' 시작');await loadAll();return;}
@@ -1099,7 +1125,13 @@ async function handleVoice(txt){
 }
 
 // ── TOAST ──
-function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+function showToast(msg,type='default'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast show'+(type!=='default'?' '+type:'');
+  clearTimeout(showToast._timer);
+  showToast._timer=setTimeout(()=>el.classList.remove('show'),2800);
+}
 
 // ── SHAKE ──
 let shakeListenerAdded=false, shakeLast=null, shakeLastFired=0;
