@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="아기기록">
+<title>아기 기록</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sleep:#7B6CF6;--sleep-bg:#F0EEFF;
+  --formula:#F5A623;--formula-bg:#FFF8EC;
+  --breast:#E8667A;--breast-bg:#FFF0F2;
+  --diaper:#3DBAA2;--diaper-bg:#EDFAF7;
+  --primary:#5B7BFF;--primary-bg:#EEF1FF;
+  --bg:#F4F5FA;--card:#fff;
+  --txt:#1A1D2E;--txt2:#6B7280;--txt3:#B0B7C3;
+  --border:#E8EAF0;
+  --r:16px;--rs:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt);max-width:430px;margin:0 auto;min-height:100vh}
+
+/* HEADER */
+.hd{background:var(--primary);padding:14px 16px 0;color:#fff}
+.hd-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px}
+.hd-title{font-size:20px;font-weight:900;letter-spacing:-0.5px}
+.hd-sub{font-size:12px;opacity:.75;margin-top:1px}
+.hd-actions{display:flex;gap:8px}
+.hd-btn{background:rgba(255,255,255,.2);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px}
+
+/* SYNC STATUS */
+.sync-bar{background:rgba(0,0,0,.15);padding:4px 16px;font-size:11px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:6px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#4ADE80;flex-shrink:0}
+.sync-dot.off{background:#FCA5A5}
+.sync-dot.loading{background:#FCD34D;animation:blink .8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* QUICK BUTTONS - 상단 배치 */
+.quick-row{display:flex;gap:6px;overflow-x:auto;padding:12px 16px;background:#fff;border-bottom:1px solid var(--border);scrollbar-width:none}
+.quick-row::-webkit-scrollbar{display:none}
+.qb{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
+.qb-icon{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;transition:transform .1s;position:relative}
+.qb:active .qb-icon{transform:scale(.9)}
+.qb-icon.sleep{background:var(--sleep-bg)}
+.qb-icon.formula{background:var(--formula-bg)}
+.qb-icon.breast{background:var(--breast-bg)}
+.qb-icon.diaper{background:var(--diaper-bg)}
+.qb-name{font-size:11px;color:var(--txt2);font-weight:500}
+
+/* LAST ACTIVITY - 퀵버튼 아래 배치 */
+.last-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 16px;background:#fff;border-bottom:1px solid var(--border)}
+.lc{background:var(--primary-bg);border-radius:12px;padding:9px 10px;cursor:pointer;transition:background .1s}
+.lc:active{background:#dde4ff}
+.lc-label{font-size:10px;color:var(--primary);font-weight:600;margin-bottom:3px}
+.lc-time{font-size:14px;font-weight:700;color:var(--txt);line-height:1.2}
+.lc-detail{font-size:10px;color:var(--txt2);margin-top:2px}
+
+/* DATE NAV */
+.date-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#fff;border-bottom:1px solid var(--border)}
+.dnbtn{background:none;border:none;font-size:22px;color:var(--txt2);cursor:pointer;padding:2px 10px}
+.date-center{text-align:center}
+.date-main{font-size:15px;font-weight:700}
+.date-age{font-size:11px;color:var(--txt2);margin-top:1px}
+
+/* CHIPS */
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;background:#fff;border-bottom:1px solid var(--border);scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:500}
+.chip.sleep{background:var(--sleep-bg);color:var(--sleep)}
+.chip.formula{background:var(--formula-bg);color:#B87E0E}
+.chip.breast{background:var(--breast-bg);color:var(--breast)}
+.chip.diaper{background:var(--diaper-bg);color:var(--diaper)}
+
+/* LOG LIST */
+.log-list{padding:12px 16px 110px}
+.log-card{background:var(--card);border-radius:var(--r);padding:13px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.li-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.li-icon.sleep{background:var(--sleep-bg)}
+.li-icon.formula{background:var(--formula-bg)}
+.li-icon.breast{background:var(--breast-bg)}
+.li-icon.diaper{background:var(--diaper-bg)}
+.li-body{flex:1;min-width:0}
+.li-type{font-size:14px;font-weight:700}
+.li-type.sleep{color:var(--sleep)}
+.li-type.formula{color:var(--formula)}
+.li-type.breast{color:var(--breast)}
+.li-type.diaper{color:var(--diaper)}
+.li-detail{font-size:13px;color:var(--txt2);margin-top:3px}
+.li-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
+.li-time{font-size:14px;font-weight:600}
+.li-end{font-size:11px;color:var(--txt3)}
+.del-btn{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:20px;padding:0 0 0 8px;line-height:1}
+.empty{text-align:center;padding:60px 20px;color:var(--txt3)}
+.empty-e{font-size:44px;margin-bottom:12px}
+.empty-t{font-size:14px}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:500;font-size:14px;color:var(--txt2)}
+.loading-overlay.hidden{display:none}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* BOTTOM FAB */
+.fab-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;border-top:1px solid var(--border);padding:10px 16px 28px;display:flex;gap:8px;z-index:100}
+.fab-mic{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.fab-mic.on{background:#E8667A;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.75}}
+.fab-add{padding:14px 18px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);font-size:22px;cursor:pointer}
+
+/* VOICE OVERLAY */
+.voice-overlay{position:fixed;inset:0;background:rgba(10,10,30,.88);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.voice-overlay.hidden{display:none}
+.voice-ring{width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:44px;animation:ring 1.2s ease-in-out infinite}
+@keyframes ring{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,.3)}50%{transform:scale(1.08);box-shadow:0 0 0 20px rgba(255,255,255,0)}}
+.voice-tip{color:rgba(255,255,255,.9);font-size:14px;text-align:center;font-weight:500}
+.voice-hint{color:rgba(255,255,255,.5);font-size:12px;text-align:center;line-height:1.8}
+.voice-cancel{padding:10px 28px;background:rgba(255,255,255,.15);border:none;border-radius:20px;color:#fff;font-size:14px;cursor:pointer;font-family:inherit}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end}
+.overlay.hidden{display:none}
+.sheet{background:#fff;border-radius:24px 24px 0 0;padding:8px 16px 40px;width:100%;max-height:92vh;overflow-y:auto}
+.drag-bar{width:36px;height:4px;background:var(--border);border-radius:2px;margin:8px auto 14px}
+.sheet-title{font-size:17px;font-weight:700;margin-bottom:14px;text-align:center}
+.type-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+.type-tile{border:2px solid var(--border);border-radius:var(--rs);padding:11px 4px;text-align:center;cursor:pointer;background:#fff;font-family:inherit;transition:all .15s}
+.type-tile .em{font-size:22px;display:block;margin-bottom:4px}
+.type-tile .nm{font-size:11px;color:var(--txt2);font-weight:500}
+.type-tile.sel.sleep{border-color:var(--sleep);background:var(--sleep-bg)}
+.type-tile.sel.formula{border-color:var(--formula);background:var(--formula-bg)}
+.type-tile.sel.breast{border-color:var(--breast);background:var(--breast-bg)}
+.type-tile.sel.diaper{border-color:var(--diaper);background:var(--diaper-bg)}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:12px;color:var(--txt2);margin-bottom:5px;font-weight:500}
+.fg input,.fg select{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:15px;font-family:inherit;color:var(--txt);background:#fff;outline:none}
+.fg input:focus,.fg select:focus{border-color:var(--primary)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;border-radius:var(--rs);overflow:hidden;border:1.5px solid var(--border)}
+.seg button{flex:1;padding:10px 4px;background:#fff;border:none;font-size:13px;font-family:inherit;color:var(--txt2);cursor:pointer;font-weight:500}
+.seg button.sel{background:var(--primary);color:#fff}
+.breast-box{background:var(--breast-bg);border-radius:var(--rs);padding:12px;margin-bottom:12px}
+.bt-label{font-size:12px;color:var(--breast);font-weight:700;margin-bottom:8px}
+.bt-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bt-side{background:#fff;border-radius:8px;padding:10px;text-align:center}
+.bt-side-name{font-size:11px;color:var(--txt2);margin-bottom:6px;font-weight:500}
+.bt-side-val{font-size:22px;font-weight:700;color:var(--breast)}
+.bt-btns{display:flex;gap:4px;justify-content:center;margin-top:6px}
+.bt-btns button{width:30px;height:30px;border-radius:50%;border:none;background:var(--breast-bg);color:var(--breast);font-size:18px;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;justify-content:center}
+.save-btn{width:100%;padding:15px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px}
+.cancel-btn{width:100%;padding:10px;background:none;border:none;color:var(--txt2);font-size:14px;cursor:pointer;font-family:inherit;margin-top:4px}
+
+/* CALENDAR */
+.cal-sheet{background:#fff;border-radius:24px 24px 0 0;padding:8px 16px 32px;width:100%;max-height:80vh;overflow-y:auto}
+.cal-head{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
+.cal-head span{font-size:16px;font-weight:700}
+.cal-head button{background:none;border:none;font-size:22px;color:var(--txt2);cursor:pointer;padding:4px 10px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;gap:2px}
+.cal-dn{font-size:11px;color:var(--txt3);padding:4px 0}
+.cal-d{font-size:14px;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative}
+.cal-d:hover{background:var(--bg)}
+.cal-d.today{background:var(--primary);color:#fff}
+.cal-d.sel{background:var(--primary-bg);color:var(--primary);font-weight:700}
+.cal-d.has::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--diaper)}
+.cal-d.empty{cursor:default}
+
+/* TOAST */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(26,29,46,.9);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div>불러오는 중...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="hd">
+  <div class="hd-top">
+    <div>
+      <div class="hd-title">👶 아기 기록</div>
+      <div class="hd-sub" id="hd-sub">오늘</div>
+    </div>
+    <div class="hd-actions">
+      <button class="hd-btn" onclick="openCal()">📅</button>
+      <button class="hd-btn" onclick="exportCSV()">⬇️</button>
+    </div>
+  </div>
+  <div class="sync-bar">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span id="sync-txt">연결 중...</span>
+  </div>
+</div>
+
+<!-- 퀵버튼 (상단) -->
+<div class="quick-row">
+  <div class="qb" onclick="quickAdd('sleep')"><div class="qb-icon sleep">😴</div><div class="qb-name">수면</div></div>
+  <div class="qb" onclick="quickAdd('formula')"><div class="qb-icon formula">🍼</div><div class="qb-name">분유</div></div>
+  <div class="qb" onclick="quickAdd('breast')"><div class="qb-icon breast">🤱</div><div class="qb-name">모유</div></div>
+  <div class="qb" onclick="quickAdd('diaper','urine')"><div class="qb-icon diaper">💧</div><div class="qb-name">소변</div></div>
+  <div class="qb" onclick="quickAdd('diaper','stool')"><div class="qb-icon diaper">💩</div><div class="qb-name">대변</div></div>
+  <div class="qb" onclick="quickAdd('diaper','both')"><div class="qb-icon diaper">🔄</div><div class="qb-name">둘다</div></div>
+</div>
+
+<!-- 마지막 기록 배너 (퀵버튼 아래) -->
+<div class="last-bar" id="last-bar"></div>
+
+<div class="date-nav">
+  <button class="dnbtn" onclick="shiftDay(-1)">‹</button>
+  <div class="date-center">
+    <div class="date-main" id="date-main"></div>
+    <div class="date-age" id="date-age"></div>
+  </div>
+  <button class="dnbtn" onclick="shiftDay(1)">›</button>
+</div>
+
+<div class="chips" id="chips"></div>
+<div class="log-list" id="log-list"></div>
+
+<div class="fab-bar">
+  <button class="fab-mic" id="mic-btn" onclick="toggleMic()">🎙 음성 입력</button>
+  <button class="fab-add" onclick="openModal()">＋</button>
+</div>
+
+<!-- Voice -->
+<div class="voice-overlay hidden" id="voice-overlay">
+  <div class="voice-ring">🎙</div>
+  <div class="voice-tip" id="voice-tip">말씀해주세요</div>
+  <div class="voice-hint">
+    "분유 120" · "모유 왼쪽 8분 오른쪽 5분"<br>
+    "기저귀 대변" · "낮잠 시작" · "수면 끝"
+  </div>
+  <button class="voice-cancel" onclick="stopMic()">취소</button>
+</div>
+
+<!-- Add Modal -->
+<div class="overlay hidden" id="modal">
+  <div class="sheet">
+    <div class="drag-bar"></div>
+    <div class="sheet-title">기록 추가</div>
+    <div class="type-grid">
+      <button class="type-tile sel sleep" id="tt-sleep" onclick="selType('sleep')"><span class="em">😴</span><span class="nm">수면</span></button>
+      <button class="type-tile formula" id="tt-formula" onclick="selType('formula')"><span class="em">🍼</span><span class="nm">분유</span></button>
+      <button class="type-tile breast" id="tt-breast" onclick="selType('breast')"><span class="em">🤱</span><span class="nm">모유</span></button>
+      <button class="type-tile diaper" id="tt-diaper" onclick="selType('diaper')"><span class="em">💧</span><span class="nm">기저귀</span></button>
+    </div>
+    <div id="modal-fields"></div>
+    <button class="save-btn" onclick="saveRec()">저장</button>
+    <button class="cancel-btn" onclick="closeModal()">취소</button>
+  </div>
+</div>
+
+<!-- Calendar Modal -->
+<div class="overlay hidden" id="cal-modal">
+  <div class="cal-sheet">
+    <div class="drag-bar"></div>
+    <div class="cal-head">
+      <button onclick="calShift(-1)">‹</button>
+      <span id="cal-label"></span>
+      <button onclick="calShift(1)">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <button class="cancel-btn" onclick="closeCal()">닫기</button>
+  </div>
+</div>
+
+<script>
+// ── SUPABASE CONFIG ──
+const SUPA_URL = 'https://yaxrymvpbvcpxbfqvzen.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlheHJ5bXZwYnZjcHhiZnF2emVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzOTM4MDUsImV4cCI6MjA5Mzk2OTgwNX0.f6ESGyRoclBzK_O8lptqP6ZOjFQwj_8tQJ9bEcuxOOQ';
+const HEADERS = {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
+
+// ── STATE ──
+let records = [];
+let selDate = new Date();
+let calDate = new Date();
+let modalType = 'sleep';
+let leftMin = 0, rightMin = 0;
+let _sk = 'nap', _dk = 'urine';
+let isListening = false, recog = null;
+let realtimeChannel = null;
+
+// ── HELPERS ──
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmtDate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function fmtTime(iso){ const d=new Date(iso); return pad(d.getHours())+':'+pad(d.getMinutes()); }
+function nowTime(){ const d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes()); }
+function todayStr(){ return fmtDate(new Date()); }
+function elapsed(iso){
+  const m=Math.floor((Date.now()-new Date(iso))/60000);
+  if(m<1) return '방금 전';
+  if(m<60) return m+'분 전';
+  const h=Math.floor(m/60),rm=m%60;
+  return h+'시간'+(rm?' '+rm+'분':'')+'전';
+}
+function durMin(s,e){ return Math.round((new Date(e)-new Date(s))/60000); }
+function durLabel(m){ return m<60?m+'분':Math.floor(m/60)+'시간'+(m%60?' '+m%60+'분':''); }
+
+// 시간 → 낮잠/밤잠 자동 판단 (06:00~19:00 = 낮잠, 나머지 = 밤잠)
+function autoSleepKind(isoOrTime){
+  const d = new Date(isoOrTime);
+  const h = d.getHours();
+  return (h>=6 && h<19) ? 'nap' : 'night';
+}
+
+function detail(r){
+  if(r.type==='sleep'){
+    const tag=r.sleep_kind==='nap'?'낮잠':'밤잠';
+    if(r.end_time){ return tag+' · '+durLabel(durMin(r.start_time,r.end_time)); }
+    return tag+' · 진행 중 ⏱';
+  }
+  if(r.type==='formula') return (r.ml||0)+'ml';
+  if(r.type==='breast'){
+    const parts=[];
+    if(r.left_min) parts.push('왼쪽 '+r.left_min+'분');
+    if(r.right_min) parts.push('오른쪽 '+r.right_min+'분');
+    const tot=(r.left_min||0)+(r.right_min||0);
+    if(tot) parts.push('총 '+tot+'분');
+    return parts.join(' · ')||'모유';
+  }
+  if(r.type==='diaper') return {urine:'소변',stool:'대변',both:'소변+대변'}[r.diaper_kind]||'기저귀';
+  return '';
+}
+
+const EMOJI={sleep:'😴',formula:'🍼',breast:'🤱',diaper:'💧'};
+const LABEL={sleep:'수면',formula:'분유',breast:'모유',diaper:'기저귀'};
+
+// ── SUPABASE API ──
+async function apiGet(path){
+  const res=await fetch(SUPA_URL+'/rest/v1/'+path,{headers:{...HEADERS,'Prefer':'return=representation'}});
+  if(!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+async function apiPost(data){
+  const res=await fetch(SUPA_URL+'/rest/v1/baby_logs',{method:'POST',headers:{...HEADERS,'Prefer':'return=representation'},body:JSON.stringify(data)});
+  if(!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+async function apiPatch(id, data){
+  const res=await fetch(SUPA_URL+'/rest/v1/baby_logs?id=eq.'+id,{method:'PATCH',headers:{...HEADERS,'Prefer':'return=representation'},body:JSON.stringify(data)});
+  if(!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+async function apiDelete(id){
+  const res=await fetch(SUPA_URL+'/rest/v1/baby_logs?id=eq.'+id,{method:'DELETE',headers:HEADERS});
+  if(!res.ok) throw new Error(await res.text());
+}
+
+// ── LOAD ──
+async function loadAll(){
+  setSyncState('loading','불러오는 중...');
+  try{
+    const data = await apiGet('baby_logs?order=start_time.desc&limit=500');
+    records = data;
+    setSyncState('on','Supabase 연결됨');
+    render();
+  } catch(e){
+    setSyncState('off','연결 실패');
+    showToast('데이터 로드 실패: '+e.message);
+  }
+  document.getElementById('loading').classList.add('hidden');
+}
+
+// ── REALTIME ──
+async function initRealtime(){
+  // Supabase Realtime via WebSocket
+  const wsUrl = SUPA_URL.replace('https','wss')+'/realtime/v1/websocket?apikey='+SUPA_KEY+'&vsn=1.0.0';
+  let ws;
+  function connect(){
+    ws = new WebSocket(wsUrl);
+    ws.onopen=()=>{
+      ws.send(JSON.stringify({topic:'realtime:public:baby_logs',event:'phx_join',payload:{},ref:'1'}));
+      setSyncState('on','실시간 동기화 중');
+    };
+    ws.onmessage=(e)=>{
+      const msg=JSON.parse(e.data);
+      if(msg.event==='INSERT'||msg.event==='UPDATE'||msg.event==='DELETE'){
+        loadAll(); // 변경 감지 시 전체 새로고침
+      }
+    };
+    ws.onclose=()=>{ setSyncState('off','재연결 중...'); setTimeout(connect,3000); };
+    ws.onerror=()=>setSyncState('off','연결 오류');
+  }
+  connect();
+}
+
+function setSyncState(state, txt){
+  const dot=document.getElementById('sync-dot');
+  dot.className='sync-dot'+(state==='loading'?' loading':state==='off'?' off':'');
+  document.getElementById('sync-txt').textContent=txt;
+}
+
+// ── RENDER ──
+function render(){
+  renderHeader();
+  renderLastBar();
+  renderDateNav();
+  renderChips();
+  renderLogs();
+}
+
+function renderHeader(){
+  const isToday=fmtDate(selDate)===todayStr();
+  document.getElementById('hd-sub').textContent=isToday?'오늘':fmtDate(selDate);
+}
+
+function renderLastBar(){
+  const types=['diaper','formula','breast'];
+  const labels={diaper:'마지막 기저귀',formula:'마지막 분유',breast:'마지막 모유'};
+  let html='';
+  for(const t of types){
+    const r=[...records].filter(x=>x.type===t).sort((a,b)=>b.start_time>a.start_time?1:-1)[0];
+    html+=`<div class="lc" onclick="quickAdd('${t}')">
+      <div class="lc-label">${labels[t]}</div>
+      ${r
+        ?`<div class="lc-time">${elapsed(r.start_time)}</div><div class="lc-detail">${detail(r)}</div>`
+        :`<div class="lc-time" style="font-size:12px;color:var(--txt2)">기록 없음</div><div class="lc-detail">탭하여 추가</div>`
+      }
+    </div>`;
+  }
+  document.getElementById('last-bar').innerHTML=html;
+}
+
+function renderDateNav(){
+  const d=selDate;
+  const days=['일','월','화','수','목','금','토'];
+  const isToday=fmtDate(d)===todayStr();
+  document.getElementById('date-main').textContent=
+    (d.getMonth()+1)+'월 '+d.getDate()+'일 ('+days[d.getDay()]+')'+(isToday?' · 오늘':'');
+}
+
+function renderChips(){
+  const ds=fmtDate(selDate);
+  const recs=records.filter(r=>r.date===ds);
+  const sleepMin=recs.filter(r=>r.type==='sleep'&&r.end_time).reduce((s,r)=>s+durMin(r.start_time,r.end_time),0);
+  const formula=recs.filter(r=>r.type==='formula').reduce((s,r)=>s+Number(r.ml||0),0);
+  const feeds=recs.filter(r=>r.type==='breast'||r.type==='formula').length;
+  const diapers=recs.filter(r=>r.type==='diaper').length;
+  let html='';
+  if(sleepMin) html+=`<div class="chip sleep">😴 ${durLabel(sleepMin)}</div>`;
+  if(formula) html+=`<div class="chip formula">🍼 ${formula}ml</div>`;
+  if(feeds) html+=`<div class="chip breast">🤱 ${feeds}회</div>`;
+  if(diapers) html+=`<div class="chip diaper">💧 ${diapers}회</div>`;
+  if(!html) html='<div style="font-size:13px;color:var(--txt3);padding:4px 0">기록이 없어요</div>';
+  document.getElementById('chips').innerHTML=html;
+}
+
+function renderLogs(){
+  const ds=fmtDate(selDate);
+  const recs=records.filter(r=>r.date===ds).sort((a,b)=>b.start_time>a.start_time?1:-1);
+  const el=document.getElementById('log-list');
+  if(!recs.length){
+    el.innerHTML=`<div class="empty"><div class="empty-e">📋</div><div class="empty-t">이 날의 기록이 없어요</div></div>`;
+    return;
+  }
+  el.innerHTML=recs.map(r=>`
+    <div class="log-card">
+      <div class="li-icon ${r.type}">${EMOJI[r.type]}</div>
+      <div class="li-body">
+        <div class="li-type ${r.type}">${LABEL[r.type]}${r.sleep_kind?' · '+(r.sleep_kind==='nap'?'낮잠':'밤잠'):''}</div>
+        <div class="li-detail">${detail(r)}</div>
+      </div>
+      <div class="li-right">
+        <div style="display:flex;align-items:center">
+          <div class="li-time">${fmtTime(r.start_time)}</div>
+          <button class="del-btn" onclick="delRec('${r.id}')">×</button>
+        </div>
+        ${r.end_time?`<div class="li-end">~ ${fmtTime(r.end_time)}</div>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── DATE NAV ──
+function shiftDay(d){ selDate=new Date(selDate); selDate.setDate(selDate.getDate()+d); render(); }
+
+// ── QUICK ADD ──
+async function quickAdd(type, diaperKind){
+  const now=new Date();
+  const ds=fmtDate(now);
+  const iso=now.toISOString();
+
+  // 수면 끝 처리: 진행 중인 수면 카드에 end_time 업데이트
+  if(type==='sleep'){
+    const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
+    if(ongoing){
+      try{
+        await apiPatch(ongoing.id,{end_time:iso});
+        showToast('수면 종료 기록됨 · '+durLabel(durMin(ongoing.start_time,iso)));
+        await loadAll();
+      }catch(e){ showToast('오류: '+e.message); }
+      return;
+    }
+  }
+
+  const rec={type, date:ds, start_time:iso};
+  if(type==='sleep') rec.sleep_kind=autoSleepKind(iso);
+  if(type==='formula') rec.ml=0;
+  if(type==='breast'){ rec.left_min=0; rec.right_min=0; }
+  if(type==='diaper') rec.diaper_kind=diaperKind||'urine';
+
+  try{
+    await apiPost(rec);
+    selDate=now;
+    showToast(EMOJI[type]+' '+LABEL[type]+' 기록됨');
+    await loadAll();
+  }catch(e){ showToast('오류: '+e.message); }
+}
+
+// ── DELETE ──
+async function delRec(id){
+  try{
+    await apiDelete(id);
+    records=records.filter(r=>r.id!==id);
+    render();
+    showToast('삭제됨');
+  }catch(e){ showToast('삭제 실패'); }
+}
+
+// ── MODAL ──
+function openModal(prefill){
+  document.getElementById('modal').classList.remove('hidden');
+  leftMin=prefill?.left_min||0; rightMin=prefill?.right_min||0;
+  selType(prefill?.type||'sleep', prefill);
+}
+function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
+
+function selType(t, prefill){
+  modalType=t;
+  ['sleep','formula','breast','diaper'].forEach(x=>{
+    document.getElementById('tt-'+x).className='type-tile '+x+(x===t?' sel':'');
+  });
+  renderModalFields(prefill);
+}
+
+function renderModalFields(p){
+  const nt=nowTime();
+  const st=p?.start_time?fmtTime(p.start_time):nt;
+  let h='';
+  if(modalType==='sleep'){
+    _sk=p?.sleep_kind||autoSleepKind(new Date());
+    h=`<div class="fg"><label>수면 종류 (시간 기준 자동 선택)</label>
+      <div class="seg">
+        <button id="sk-nap" class="${_sk==='nap'?'sel':''}" onclick="setSK('nap')">🌙 낮잠</button>
+        <button id="sk-night" class="${_sk==='night'?'sel':''}" onclick="setSK('night')">⭐ 밤잠</button>
+      </div></div>
+    <div class="row2">
+      <div class="fg"><label>시작 시간</label><input type="time" id="f-start" value="${st}"></div>
+      <div class="fg"><label>종료 시간 (선택)</label><input type="time" id="f-end" value="${p?.end_time?fmtTime(p.end_time):''}"></div>
+    </div>`;
+  } else if(modalType==='formula'){
+    h=`<div class="row2">
+      <div class="fg"><label>시간</label><input type="time" id="f-start" value="${st}"></div>
+      <div class="fg"><label>양 (ml)</label><input type="number" id="f-ml" placeholder="120" min="0" max="500" value="${p?.ml||''}"></div>
+    </div>`;
+  } else if(modalType==='breast'){
+    h=`<div class="fg"><label>시간</label><input type="time" id="f-start" value="${st}"></div>
+    <div class="breast-box">
+      <div class="bt-label">🤱 수유 시간 설정</div>
+      <div class="bt-row">
+        <div class="bt-side">
+          <div class="bt-side-name">왼쪽</div>
+          <div class="bt-side-val" id="bt-left">${leftMin}</div>
+          <div class="bt-btns">
+            <button onclick="adjSide('left',-1)">−</button>
+            <button onclick="adjSide('left',1)">＋</button>
+          </div>
+        </div>
+        <div class="bt-side">
+          <div class="bt-side-name">오른쪽</div>
+          <div class="bt-side-val" id="bt-right">${rightMin}</div>
+          <div class="bt-btns">
+            <button onclick="adjSide('right',-1)">−</button>
+            <button onclick="adjSide('right',1)">＋</button>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:8px;font-size:13px;color:var(--breast);font-weight:600">총 <span id="bt-total">${leftMin+rightMin}</span>분</div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>왼쪽 직접 입력(분)</label><input type="number" id="f-left" min="0" max="60" value="${leftMin}" oninput="syncSide('left',this.value)"></div>
+      <div class="fg"><label>오른쪽 직접 입력(분)</label><input type="number" id="f-right" min="0" max="60" value="${rightMin}" oninput="syncSide('right',this.value)"></div>
+    </div>`;
+  } else if(modalType==='diaper'){
+    _dk=p?.diaper_kind||'urine';
+    h=`<div class="fg"><label>시간</label><input type="time" id="f-start" value="${st}"></div>
+    <div class="fg"><label>종류</label>
+      <div class="seg">
+        <button id="dk-urine" class="${_dk==='urine'?'sel':''}" onclick="setDK('urine')">💧 소변</button>
+        <button id="dk-stool" class="${_dk==='stool'?'sel':''}" onclick="setDK('stool')">💩 대변</button>
+        <button id="dk-both" class="${_dk==='both'?'sel':''}" onclick="setDK('both')">🔄 둘다</button>
+      </div></div>`;
+  }
+  document.getElementById('modal-fields').innerHTML=h;
+}
+
+function setSK(v){ _sk=v; document.getElementById('sk-nap').className=v==='nap'?'sel':''; document.getElementById('sk-night').className=v==='night'?'sel':''; }
+function setDK(v){ _dk=v; ['urine','stool','both'].forEach(x=>{ document.getElementById('dk-'+x).className=v===x?'sel':''; }); }
+function adjSide(side,d){
+  if(side==='left'){ leftMin=Math.max(0,leftMin+d); document.getElementById('bt-left').textContent=leftMin; const el=document.getElementById('f-left'); if(el) el.value=leftMin; }
+  else { rightMin=Math.max(0,rightMin+d); document.getElementById('bt-right').textContent=rightMin; const el=document.getElementById('f-right'); if(el) el.value=rightMin; }
+  const t=document.getElementById('bt-total'); if(t) t.textContent=leftMin+rightMin;
+}
+function syncSide(side,v){ const n=Math.max(0,parseInt(v)||0); if(side==='left'){leftMin=n;const e=document.getElementById('bt-left');if(e)e.textContent=n;}else{rightMin=n;const e=document.getElementById('bt-right');if(e)e.textContent=n;} const t=document.getElementById('bt-total');if(t)t.textContent=leftMin+rightMin; }
+
+async function saveRec(){
+  const ds=fmtDate(selDate);
+  const st=document.getElementById('f-start')?.value||nowTime();
+  const startISO=ds+'T'+st+':00+09:00';
+  const rec={type:modalType, date:ds, start_time:startISO};
+  if(modalType==='sleep'){
+    rec.sleep_kind=_sk;
+    const ev=document.getElementById('f-end')?.value;
+    if(ev) rec.end_time=ds+'T'+ev+':00+09:00';
+  } else if(modalType==='formula'){
+    rec.ml=parseInt(document.getElementById('f-ml')?.value||0);
+  } else if(modalType==='breast'){
+    rec.left_min=leftMin; rec.right_min=rightMin;
+  } else if(modalType==='diaper'){
+    rec.diaper_kind=_dk;
+  }
+  closeModal();
+  try{
+    await apiPost(rec);
+    showToast(EMOJI[modalType]+' 저장됨');
+    await loadAll();
+  }catch(e){ showToast('저장 실패: '+e.message); }
+}
+
+// ── VOICE ──
+function toggleMic(){
+  if(isListening){ stopMic(); return; }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ alert('음성인식을 지원하지 않는 브라우저예요.\niOS Safari를 사용해주세요.'); return; }
+  recog=new SR();
+  recog.lang='ko-KR'; recog.continuous=false; recog.interimResults=false;
+  recog.onstart=()=>{ isListening=true; document.getElementById('voice-overlay').classList.remove('hidden'); document.getElementById('mic-btn').classList.add('on'); document.getElementById('mic-btn').textContent='🔴 듣는 중...'; };
+  recog.onresult=(e)=>{ const txt=e.results[0][0].transcript; stopMic(); handleVoice(txt); };
+  recog.onerror=()=>stopMic();
+  recog.onend=()=>stopMic();
+  recog.start();
+}
+function stopMic(){ isListening=false; try{recog&&recog.stop();}catch(e){} document.getElementById('voice-overlay').classList.add('hidden'); document.getElementById('mic-btn').classList.remove('on'); document.getElementById('mic-btn').textContent='🎙 음성 입력'; }
+
+async function handleVoice(txt){
+  const t=txt.trim();
+  const nt=nowTime();
+
+  // 수면 끝
+  if(/수면\s*끝|잠\s*깼|기상|일어났/.test(t)){
+    const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
+    if(ongoing){
+      const now=new Date().toISOString();
+      await apiPatch(ongoing.id,{end_time:now});
+      showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,now)));
+      await loadAll(); return;
+    } else { showToast('진행 중인 수면 기록이 없어요'); return; }
+  }
+
+  let prefill={start_time: fmtDate(selDate)+'T'+nt+':00'};
+  if(/분유/.test(t)){
+    prefill.type='formula';
+    const m=t.match(/(\d+)/); if(m) prefill.ml=parseInt(m[1]);
+  } else if(/모유|수유/.test(t)){
+    prefill.type='breast';
+    const lm=t.match(/왼(쪽)?\s*(\d+)/); if(lm) prefill.left_min=parseInt(lm[2]);
+    const rm=t.match(/오른(쪽)?\s*(\d+)/); if(rm) prefill.right_min=parseInt(rm[2]);
+    leftMin=prefill.left_min||0; rightMin=prefill.right_min||0;
+  } else if(/기저귀|소변|대변/.test(t)){
+    prefill.type='diaper';
+    _dk=/대변/.test(t)&&/소변/.test(t)?'both':/대변/.test(t)?'stool':'urine';
+    prefill.diaper_kind=_dk;
+  } else if(/수면|잠|낮잠|밤잠|자/.test(t)){
+    prefill.type='sleep';
+    prefill.sleep_kind=/밤잠/.test(t)?'night':autoSleepKind(new Date());
+    _sk=prefill.sleep_kind;
+  }
+  if(prefill.type){ openModal(prefill); }
+  else { showToast('"'+txt+'" — 인식 실패'); }
+}
+
+// ── CALENDAR ──
+function openCal(){ calDate=new Date(selDate); document.getElementById('cal-modal').classList.remove('hidden'); renderCal(); }
+function closeCal(){ document.getElementById('cal-modal').classList.add('hidden'); }
+function calShift(d){ calDate.setMonth(calDate.getMonth()+d); renderCal(); }
+function renderCal(){
+  const y=calDate.getFullYear(),m=calDate.getMonth();
+  document.getElementById('cal-label').textContent=y+'년 '+(m+1)+'월';
+  const days=['일','월','화','수','목','금','토'];
+  let h=days.map(d=>`<div class="cal-dn">${d}</div>`).join('');
+  const first=new Date(y,m,1).getDay(), total=new Date(y,m+1,0).getDate();
+  const logDays=new Set(records.map(r=>r.date));
+  const todStr=todayStr(), selStr=fmtDate(selDate);
+  for(let i=0;i<first;i++) h+=`<div class="cal-d empty"></div>`;
+  for(let d=1;d<=total;d++){
+    const ds=y+'-'+pad(m+1)+'-'+pad(d);
+    let c='cal-d';
+    if(ds===todStr) c+=' today'; else if(ds===selStr) c+=' sel';
+    if(logDays.has(ds)) c+=' has';
+    h+=`<div class="${c}" onclick="pickDate('${ds}')">${d}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=h;
+}
+function pickDate(ds){ selDate=new Date(ds+'T12:00:00'); closeCal(); render(); }
+
+// ── EXPORT ──
+function exportCSV(){
+  const csv='id,date,type,start_time,end_time,ml,left_min,right_min,sleep_kind,diaper_kind\n'+
+    records.map(r=>[r.id,r.date,r.type,r.start_time||'',r.end_time||'',r.ml||'',r.left_min||'',r.right_min||'',r.sleep_kind||'',r.diaper_kind||''].join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='baby_log_'+todayStr()+'.csv';
+  a.click();
+}
+
+// ── TOAST ──
+function showToast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2500); }
+
+// ── AUTO REFRESH ──
+setInterval(()=>{ renderLastBar(); },60000);
+
+// ── INIT ──
+loadAll().then(()=>initRealtime());
+</script>
+</body>
+</html>
