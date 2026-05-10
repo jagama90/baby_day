@@ -20,7 +20,9 @@
   --border:#E8EAF0;
   --r:16px;--rs:10px;
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button{touch-action:manipulation;user-select:none;-webkit-user-select:none}
+input,select{touch-action:manipulation}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt);max-width:430px;margin:0 auto;min-height:100vh}
 
 /* HEADER */
@@ -135,11 +137,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt)
 .type-tile.sel.diaper{border-color:var(--diaper);background:var(--diaper-bg)}
 .fg{margin-bottom:12px}
 .fg label{display:block;font-size:12px;color:var(--txt2);margin-bottom:5px;font-weight:500}
-.fg input,.fg select{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:15px;font-family:inherit;color:var(--txt);background:#fff;outline:none}
+.fg input,.fg select{width:100%;padding:0 12px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:15px;font-family:inherit;color:var(--txt);background:#fff;outline:none;height:48px;appearance:none;-webkit-appearance:none;display:flex;align-items:center}
 .fg input:focus,.fg select:focus{border-color:var(--primary)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .seg{display:flex;border-radius:var(--rs);overflow:hidden;border:1.5px solid var(--border)}
-.seg button{flex:1;padding:10px 4px;background:#fff;border:none;font-size:13px;font-family:inherit;color:var(--txt2);cursor:pointer;font-weight:500}
+.seg button{flex:1;padding:10px 4px;background:#fff;border:none;font-size:13px;font-family:inherit;color:var(--txt2);cursor:pointer;font-weight:500;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .seg button.sel{background:var(--primary);color:#fff}
 .breast-box{background:var(--breast-bg);border-radius:var(--rs);padding:12px;margin-bottom:12px}
 .bt-label{font-size:12px;color:var(--breast);font-weight:700;margin-bottom:8px}
@@ -148,7 +150,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt)
 .bt-side-name{font-size:11px;color:var(--txt2);margin-bottom:6px;font-weight:500}
 .bt-side-val{font-size:22px;font-weight:700;color:var(--breast)}
 .bt-btns{display:flex;gap:4px;justify-content:center;margin-top:6px}
-.bt-btns button{width:30px;height:30px;border-radius:50%;border:none;background:var(--breast-bg);color:var(--breast);font-size:18px;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;justify-content:center}
+.bt-btns button{width:36px;height:36px;border-radius:50%;border:none;background:var(--breast-bg);color:var(--breast);font-size:20px;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;justify-content:center;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .save-btn{width:100%;padding:15px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px}
 .cancel-btn{width:100%;padding:10px;background:none;border:none;color:var(--txt2);font-size:14px;cursor:pointer;font-family:inherit;margin-top:4px}
 
@@ -525,13 +527,21 @@ async function delRec(id){
 // ── MODAL ──
 function openModal(prefill){
   document.getElementById('modal').classList.remove('hidden');
-  leftMin=prefill?.left_min||0; rightMin=prefill?.right_min||0;
+  // prefill 없이 열 때는 항상 0으로 초기화
+  if(!prefill || prefill.type !== 'breast'){
+    leftMin = 0; rightMin = 0;
+  } else {
+    leftMin = Number(prefill?.left_min || prefill?.leftMin || 0);
+    rightMin = Number(prefill?.right_min || prefill?.rightMin || 0);
+  }
   selType(prefill?.type||'sleep', prefill);
 }
 function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
 
 function selType(t, prefill){
   modalType=t;
+  // 타입 전환 시 모유 아닌 경우 초기화
+  if(t !== 'breast' || !prefill){ leftMin=0; rightMin=0; }
   ['sleep','formula','breast','diaper'].forEach(x=>{
     document.getElementById('tt-'+x).className='type-tile '+x+(x===t?' sel':'');
   });
@@ -670,7 +680,13 @@ async function handleVoice(txt){
     prefill.type='breast';
     const lm=t.match(/왼(쪽)?\s*(\d+)/); if(lm) prefill.left_min=parseInt(lm[2]);
     const rm=t.match(/오른(쪽)?\s*(\d+)/); if(rm) prefill.right_min=parseInt(rm[2]);
-    leftMin=prefill.left_min||0; rightMin=prefill.right_min||0;
+    // 단순히 숫자만 말한 경우 (예: "모유 10분") → 왼쪽으로
+    if(!prefill.left_min && !prefill.right_min){
+      const nm=t.match(/(\d+)\s*분?/); if(nm){ prefill.left_min=parseInt(nm[1]); }
+    }
+    // 전역 변수 즉시 반영 (openModal 호출 전에 세팅)
+    leftMin = prefill.left_min || 0;
+    rightMin = prefill.right_min || 0;
   } else if(/기저귀|소변|대변/.test(t)){
     prefill.type='diaper';
     _dk=/대변/.test(t)&&/소변/.test(t)?'both':/대변/.test(t)?'stool':'urine';
