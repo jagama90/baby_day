@@ -75,11 +75,6 @@ body.dark .predict-bar{background:#1A1F3A;border-left-color:var(--primary)}
 .predict-bar{background:var(--primary-bg);border-left:3px solid var(--primary);border-radius:0 var(--rs) var(--rs) 0;margin:0 16px 8px;padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between}
 .predict-bar.hidden{display:none}
 .predict-label{color:var(--txt2);font-size:11px}.predict-val{font-weight:700;color:var(--primary);font-size:15px}
-.sleep-active-bar{background:var(--sleep-bg);border-left:3px solid var(--sleep);border-radius:0 var(--rs) var(--rs) 0;margin:0 16px 8px;padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-.sleep-active-bar.hidden{display:none}
-.sleep-active-label{color:var(--txt2);font-size:11px}
-.sleep-active-val{font-weight:700;color:var(--sleep);font-size:15px}
-.sleep-end-btn{border:none;background:var(--sleep);color:#fff;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
 
 /* LAST ACTIVITY */
 .last-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border)}
@@ -199,8 +194,6 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
 /* TOAST */
 .toast{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(26,29,46,.9);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
-.toast.success{background:#10B981}
-.toast.error{background:#EF4444}
 
 /* PAGES */
 .page{display:none;padding-bottom:140px}.page.show{display:block}
@@ -293,13 +286,6 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
   <div class="predict-bar hidden" id="predict-bar">
     <div><div class="predict-label">다음 수유 예상</div><div class="predict-val" id="predict-val">--:--</div></div>
     <div style="font-size:11px;color:var(--txt2)" id="predict-in"></div>
-  </div>
-  <div class="sleep-active-bar hidden" id="sleep-active-bar">
-    <div>
-      <div class="sleep-active-label">현재 수면 중</div>
-      <div class="sleep-active-val" id="sleep-active-val">--</div>
-    </div>
-    <button class="sleep-end-btn" onclick="quickAdd('sleep')">수면 종료</button>
   </div>
   <div class="date-nav">
     <button class="dnbtn" onclick="shiftDay(-1)">‹</button>
@@ -428,10 +414,6 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
       <div><div class="settings-lbl">🔔 푸시 알림</div><div class="settings-sub">수유 간격 알림 (브라우저)</div></div>
       <button class="toggle" id="toggle-push" onclick="togglePush()"></button>
     </div>
-    <div class="settings-row">
-      <div><div class="settings-lbl">📳 흔들어 음성 입력</div><div class="settings-sub">켜면 휴대폰을 흔들어 음성 입력 실행</div></div>
-      <button class="toggle" id="toggle-shake" onclick="toggleShake()"></button>
-    </div>
     <button class="cancel-btn" onclick="closeSettings()">닫기</button>
   </div>
 </div>
@@ -481,11 +463,10 @@ function detail(r){
 
 // ── SETTINGS ──
 function loadSettings(){
-  ['babyName','babyBirth','formulaGoal','feedWarnHour','darkMode','pushEnabled','shakeEnabled'].forEach(k=>{settings[k]=localStorage.getItem(k)||'';});
+  ['babyName','babyBirth','formulaGoal','feedWarnHour','darkMode','pushEnabled'].forEach(k=>{settings[k]=localStorage.getItem(k)||'';});
   if(settings.darkMode==='1')document.body.classList.add('dark');
   document.getElementById('toggle-dark').className='toggle'+(settings.darkMode==='1'?' on':'');
   document.getElementById('toggle-push').className='toggle'+(settings.pushEnabled==='1'?' on':'');
-  const ts=document.getElementById('toggle-shake'); if(ts) ts.className='toggle'+(settings.shakeEnabled==='1'?' on':'');
 }
 function syncSettingsUI(){
   document.getElementById('s-name').value=settings.babyName||'';
@@ -494,7 +475,6 @@ function syncSettingsUI(){
   document.getElementById('s-warn').value=settings.feedWarnHour||'3';
   document.getElementById('toggle-dark').className='toggle'+(settings.darkMode==='1'?' on':'');
   document.getElementById('toggle-push').className='toggle'+(settings.pushEnabled==='1'?' on':'');
-  const ts=document.getElementById('toggle-shake'); if(ts) ts.className='toggle'+(settings.shakeEnabled==='1'?' on':'');
 }
 function saveSetting(k,v){settings[k]=v;localStorage.setItem(k,v);}
 function openSettings(){document.getElementById('settings-modal').classList.remove('hidden');syncSettingsUI();}
@@ -583,7 +563,7 @@ async function initRealtime(){
 }
 
 // ── RENDER ──
-function render(){renderHeader();renderLastBar();renderWarnings();renderCurrentSleepBar();renderDateNav();renderChips();renderLogs();startSleepTimer();if(currentTab==='stats')renderStats();if(currentTab==='growth')renderGrowth();if(currentTab==='hospital')renderHospital();}
+function render(){renderHeader();renderLastBar();renderWarnings();renderDateNav();renderChips();renderLogs();startSleepTimer();if(currentTab==='stats')renderStats();if(currentTab==='growth')renderGrowth();if(currentTab==='hospital')renderHospital();}
 
 function renderHeader(){
   const name=settings.babyName||'승준이';
@@ -625,17 +605,6 @@ function renderWarnings(){
     for(let i=0;i<Math.min(feeds.length-1,5);i++){const d=new Date(feeds[i].start_time)-new Date(feeds[i+1].start_time);if(d>0&&d<8*3600000)ivs.push(d);}
     if(ivs.length>=2){const avg=ivs.reduce((a,b)=>a+b,0)/ivs.length;const next=new Date(new Date(last.start_time).getTime()+avg);const ml=Math.round((next-Date.now())/60000);pv.textContent=pad(next.getHours())+':'+pad(next.getMinutes());pi.textContent=ml>0?ml+'분 후':'지금쯤이에요!';pe.classList.remove('hidden');}else pe.classList.add('hidden');
   }else pe.classList.add('hidden');
-}
-
-function renderCurrentSleepBar(){
-  const el=document.getElementById('sleep-active-bar');
-  const val=document.getElementById('sleep-active-val');
-  const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
-  if(!ongoing){el.classList.add('hidden');return;}
-  const m=Math.max(0,Math.floor((Date.now()-new Date(ongoing.start_time))/60000));
-  const kind=ongoing.sleep_kind==='night'?'밤잠':'낮잠';
-  val.textContent=`${kind} · ${durLabel(m)}째`;
-  el.classList.remove('hidden');
 }
 
 function renderDateNav(){
@@ -690,13 +659,12 @@ function startSleepTimer(){
   clearInterval(sleepTimerInterval);
   const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
   if(!ongoing)return;
-  const updateSleepUI=()=>{
+  sleepTimerInterval=setInterval(()=>{
     const el=document.getElementById('sleep-timer-'+ongoing.id);
     if(el){const m=Math.floor((Date.now()-new Date(ongoing.start_time))/60000);el.textContent='⏱ '+durLabel(m)+' 경과 중';}
-    renderCurrentSleepBar();
-  };
-  sleepTimerInterval=setInterval(updateSleepUI,10000);
-  updateSleepUI();
+  },10000);
+  const el=document.getElementById('sleep-timer-'+ongoing.id);
+  if(el){const m=Math.floor((Date.now()-new Date(ongoing.start_time))/60000);el.textContent='⏱ '+durLabel(m)+' 경과 중';}
 }
 
 // ── MEMO ──
@@ -704,7 +672,7 @@ function openMemo(id){
   const r=records.find(x=>x.id===id);if(!r)return;
   const memo=prompt('메모 입력 ('+LABEL[r.type]+')',r.memo||'');
   if(memo===null)return;
-  apiPatch(id,{memo}).then(()=>{r.memo=memo;renderLogs();showToast('메모 저장됨', 'success');}).catch(()=>showToast('저장 실패'));
+  apiPatch(id,{memo}).then(()=>{r.memo=memo;renderLogs();showToast('메모 저장됨');}).catch(()=>showToast('저장 실패'));
 }
 
 // ── DATE NAV ──
@@ -715,17 +683,17 @@ async function quickAdd(type,diaperKind){
   const now=new Date(),ds=fmtDate(now),iso=now.toISOString();
   if(type==='sleep'){
     const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
-    if(ongoing){try{await apiPatch(ongoing.id,{end_time:iso});showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,iso)), 'success');await loadAll();}catch(e){showToast('오류: '+e.message, 'error');}return;}
+    if(ongoing){try{await apiPatch(ongoing.id,{end_time:iso});showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,iso)));await loadAll();}catch(e){showToast('오류: '+e.message);}return;}
   }
   const rec={type,date:ds,start_time:iso};
   if(type==='sleep')rec.sleep_kind=autoSleepKind(iso);
   if(type==='diaper')rec.diaper_kind=diaperKind||'urine';
-  try{await apiPost(rec);selDate=now;showToast(EMOJI[type]+' '+LABEL[type]+' 기록됨', 'success');await loadAll();}catch(e){showToast('오류: '+e.message, 'error');}
+  try{await apiPost(rec);selDate=now;showToast(EMOJI[type]+' '+LABEL[type]+' 기록됨');await loadAll();}catch(e){showToast('오류: '+e.message);}
 }
 
 // ── DELETE ──
 async function delRec(id){
-  try{await apiDelete(id);records=records.filter(r=>r.id!==id);render();showToast('삭제됨', 'success');}catch(e){showToast('삭제 실패', 'error');}
+  try{await apiDelete(id);records=records.filter(r=>r.id!==id);render();showToast('삭제됨');}catch(e){showToast('삭제 실패');}
 }
 
 // ── MODAL ──
@@ -850,8 +818,8 @@ async function saveRec(){
     const m=document.getElementById('f-hmemo')?.value;if(m)rec.memo=m;
   }
   closeModal();
-  try{await apiPost(rec);showToast(EMOJI[modalType]+' 저장됨', 'success');await loadAll();if(modalType==='growth')renderGrowth();if(modalType==='hospital')renderHospital();}
-  catch(e){showToast('저장 실패: '+e.message, 'error');}
+  try{await apiPost(rec);showToast(EMOJI[modalType]+' 저장됨');await loadAll();if(modalType==='growth')renderGrowth();if(modalType==='hospital')renderHospital();}
+  catch(e){showToast('저장 실패: '+e.message);}
 }
 
 // ── GROWTH ──
@@ -1071,24 +1039,8 @@ function exportCSV(){
 }
 
 // ── VOICE ──
-let micReady=false;
-async function ensureMicPermission(){
-  if(micReady) return true;
-  if(!navigator.mediaDevices?.getUserMedia) return true;
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    stream.getTracks().forEach(t=>t.stop());
-    micReady=true;
-    return true;
-  }catch(e){
-    showToast('마이크 권한이 필요해요');
-    return false;
-  }
-}
-async function toggleMic(){
+function toggleMic(){
   if(isListening){stopMic();return;}
-  const ok=await ensureMicPermission();
-  if(!ok) return;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){alert('iOS Safari를 사용해주세요.');return;}
   recog=new SR();recog.lang='ko-KR';recog.continuous=false;recog.interimResults=false;
@@ -1107,7 +1059,7 @@ async function handleVoice(txt){
   }
   if(/수면\s*끝|잠\s*깼|기상|일어났/.test(t)){
     const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
-    if(ongoing){await apiPatch(ongoing.id,{end_time:iso});showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,iso)), 'success');await loadAll();}
+    if(ongoing){await apiPatch(ongoing.id,{end_time:iso});showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,iso)));await loadAll();}
     else showToast('진행 중인 수면이 없어요');return;
   }
   if(/수면|잠|낮잠|밤잠/.test(t)){const sk=/밤잠/.test(t)?'night':autoSleepKind(now);await apiPost({type:'sleep',date:ds,start_time:iso,sleep_kind:sk});showToast('😴 '+(sk==='nap'?'낮잠':'밤잠')+' 시작');await loadAll();return;}
@@ -1125,59 +1077,15 @@ async function handleVoice(txt){
 }
 
 // ── TOAST ──
-function showToast(msg,type='default'){
-  const el=document.getElementById('toast');
-  el.textContent=msg;
-  el.className='toast show'+(type!=='default'?' '+type:'');
-  clearTimeout(showToast._timer);
-  showToast._timer=setTimeout(()=>el.classList.remove('show'),2800);
-}
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
 
 // ── SHAKE ──
-let shakeListenerAdded=false, shakeLast=null, shakeLastFired=0;
-function onShakeMotion(e){
-  const a=e.accelerationIncludingGravity;
-  if(!a) return;
-  if(!shakeLast){shakeLast={x:a.x,y:a.y,z:a.z};return;}
-  const dx=Math.abs(a.x-shakeLast.x),dy=Math.abs(a.y-shakeLast.y),dz=Math.abs(a.z-shakeLast.z);
-  shakeLast={x:a.x,y:a.y,z:a.z};
-  if(dx+dy+dz>18){
-    const now=Date.now();
-    if(now-shakeLastFired<2000) return;
-    shakeLastFired=now;
-    if(!micReady){
-      showToast('먼저 음성 입력 버튼을 한 번 눌러 마이크 권한을 허용해 주세요');
-      return;
-    }
-    if(!isListening) toggleMic();
-  }
-}
-function startShakeListener(){
-  if(shakeListenerAdded) return;
-  window.addEventListener('devicemotion',onShakeMotion);
-  shakeListenerAdded=true;
-}
-async function toggleShake(){
-  if(settings.shakeEnabled==='1'){
-    saveSetting('shakeEnabled','0');
-    document.getElementById('toggle-shake').className='toggle';
-    if(shakeListenerAdded){window.removeEventListener('devicemotion',onShakeMotion);shakeListenerAdded=false;}
-    showToast('흔들어 음성 입력 꺼짐');
-    return;
-  }
-  try{
-    if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
-      const res=await DeviceMotionEvent.requestPermission();
-      if(res!=='granted'){showToast('동작 및 방향 권한이 필요해요');return;}
-    }
-    startShakeListener();
-    saveSetting('shakeEnabled','1');
-    document.getElementById('toggle-shake').className='toggle on';
-    showToast('📳 흔들어 음성 입력 켜짐');
-  }catch(e){
-    showToast('흔들기 권한 요청에 실패했어요');
-  }
-}
+(function(){
+  const THRESHOLD=18,COOLDOWN=2000;let last={x:0,y:0,z:0},lastFired=0;
+  function onMotion(e){const a=e.accelerationIncludingGravity;if(!a)return;const dx=Math.abs(a.x-last.x),dy=Math.abs(a.y-last.y),dz=Math.abs(a.z-last.z);last={x:a.x,y:a.y,z:a.z};if(dx+dy+dz>THRESHOLD){const now=Date.now();if(now-lastFired<COOLDOWN)return;lastFired=now;if(!isListening)toggleMic();}}
+  if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){document.addEventListener('touchend',async function ask(){try{const res=await DeviceMotionEvent.requestPermission();if(res==='granted')window.addEventListener('devicemotion',onMotion);}catch(e){}document.removeEventListener('touchend',ask);},{once:true});}
+  else window.addEventListener('devicemotion',onMotion);
+})();
 
 // ── AUTO REFRESH ──
 setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
@@ -1186,6 +1094,9 @@ setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
 loadSettings();
 loadAll().then(()=>{initRealtime();});
 
+// Mic permission check only (스트림 열지 않음 - 자동 켜짐 버그 방지)
+(async()=>{try{if(navigator.permissions){const p=await navigator.permissions.query({name:'microphone'});if(p.state==='prompt'){// 첫 터치시 권한 요청 (자동으로 마이크 켜지지 않음)
+document.addEventListener('touchend',async function ask(){try{await navigator.mediaDevices.getUserMedia({audio:true}).then(s=>s.getTracks().forEach(t=>t.stop()));}catch(e){}document.removeEventListener('touchend',ask);},{once:true});}}}catch(e){}})();
 </script>
 </body>
 </html>
