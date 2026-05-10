@@ -414,6 +414,10 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
       <div><div class="settings-lbl">🔔 푸시 알림</div><div class="settings-sub">수유 간격 알림 (브라우저)</div></div>
       <button class="toggle" id="toggle-push" onclick="togglePush()"></button>
     </div>
+    <div class="settings-row">
+      <div><div class="settings-lbl">📳 흔들어 음성 입력</div><div class="settings-sub">켜면 휴대폰을 흔들어 음성 입력 실행</div></div>
+      <button class="toggle" id="toggle-shake" onclick="toggleShake()"></button>
+    </div>
     <button class="cancel-btn" onclick="closeSettings()">닫기</button>
   </div>
 </div>
@@ -432,7 +436,6 @@ async function apiDelete(id){ const r=await fetch(SUPA_URL+'/rest/v1/baby_logs?i
 let records=[], selDate=new Date(), calDate=new Date();
 let modalType='sleep', leftMin=0, rightMin=0, _sk='nap', _dk='urine';
 let isListening=false, recog=null;
-let micPrimedThisSession=false, micPrimePromise=null;
 let statsPeriod='day', statsOffset=0;
 let currentTab='home';
 let settings={};
@@ -464,10 +467,11 @@ function detail(r){
 
 // ── SETTINGS ──
 function loadSettings(){
-  ['babyName','babyBirth','formulaGoal','feedWarnHour','darkMode','pushEnabled'].forEach(k=>{settings[k]=localStorage.getItem(k)||'';});
+  ['babyName','babyBirth','formulaGoal','feedWarnHour','darkMode','pushEnabled','shakeEnabled'].forEach(k=>{settings[k]=localStorage.getItem(k)||'';});
   if(settings.darkMode==='1')document.body.classList.add('dark');
   document.getElementById('toggle-dark').className='toggle'+(settings.darkMode==='1'?' on':'');
   document.getElementById('toggle-push').className='toggle'+(settings.pushEnabled==='1'?' on':'');
+  const ts=document.getElementById('toggle-shake'); if(ts) ts.className='toggle'+(settings.shakeEnabled==='1'?' on':'');
 }
 function syncSettingsUI(){
   document.getElementById('s-name').value=settings.babyName||'';
@@ -476,6 +480,7 @@ function syncSettingsUI(){
   document.getElementById('s-warn').value=settings.feedWarnHour||'3';
   document.getElementById('toggle-dark').className='toggle'+(settings.darkMode==='1'?' on':'');
   document.getElementById('toggle-push').className='toggle'+(settings.pushEnabled==='1'?' on':'');
+  const ts=document.getElementById('toggle-shake'); if(ts) ts.className='toggle'+(settings.shakeEnabled==='1'?' on':'');
 }
 function saveSetting(k,v){settings[k]=v;localStorage.setItem(k,v);}
 function openSettings(){document.getElementById('settings-modal').classList.remove('hidden');syncSettingsUI();}
@@ -1040,41 +1045,30 @@ function exportCSV(){
 }
 
 // ── VOICE ──
-async function primeMicPermission(){
-  if(micPrimedThisSession) return true;
-  if(micPrimePromise) return micPrimePromise;
-  if(!navigator.mediaDevices?.getUserMedia) return false;
-  micPrimePromise=(async()=>{
-    try{
-      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-      stream.getTracks().forEach(t=>t.stop());
-      micPrimedThisSession=true;
-      sessionStorage.setItem('micPrimedThisSession','1');
-      return true;
-    }catch(e){
-      return false;
-    }finally{
-      micPrimePromise=null;
-    }
-  })();
-  return micPrimePromise;
+let micReady=false;
+async function ensureMicPermission(){
+  if(micReady) return true;
+  if(!navigator.mediaDevices?.getUserMedia) return true;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    stream.getTracks().forEach(t=>t.stop());
+    micReady=true;
+    return true;
+  }catch(e){
+    showToast('마이크 권한이 필요해요');
+    return false;
+  }
 }
-
 async function toggleMic(){
   if(isListening){stopMic();return;}
+  const ok=await ensureMicPermission();
+  if(!ok) return;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){alert('iOS Safari를 사용해주세요.');return;}
-
-  // 첫 사용 전에 한 번만 권한을 받아둠.
-  // 이미 앱 첫 터치에서 허용했다면 여기서는 팝업이 다시 뜨지 않음.
-  if(!micPrimedThisSession) await primeMicPermission();
-
   recog=new SR();recog.lang='ko-KR';recog.continuous=false;recog.interimResults=false;
   recog.onstart=()=>{isListening=true;document.getElementById('voice-overlay').classList.remove('hidden');document.getElementById('mic-btn').classList.add('on');document.getElementById('mic-btn').textContent='🔴 듣는 중...';};
   recog.onresult=e=>{const txt=e.results[0][0].transcript;stopMic();handleVoice(txt);};
-  recog.onerror=e=>{if(e.error!=='aborted')stopMic();};
-  recog.onend=()=>stopMic();
-  recog.start();
+  recog.onerror=e=>{if(e.error!=='aborted')stopMic();};recog.onend=()=>stopMic();recog.start();
 }
 function stopMic(){isListening=false;try{recog&&recog.stop();}catch(e){}document.getElementById('voice-overlay').classList.add('hidden');document.getElementById('mic-btn').classList.remove('on');document.getElementById('mic-btn').textContent='🎙 음성 입력';}
 
@@ -1108,12 +1102,50 @@ async function handleVoice(txt){
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
 
 // ── SHAKE ──
-(function(){
-  const THRESHOLD=18,COOLDOWN=2000;let last={x:0,y:0,z:0},lastFired=0;
-  function onMotion(e){const a=e.accelerationIncludingGravity;if(!a)return;const dx=Math.abs(a.x-last.x),dy=Math.abs(a.y-last.y),dz=Math.abs(a.z-last.z);last={x:a.x,y:a.y,z:a.z};if(dx+dy+dz>THRESHOLD){const now=Date.now();if(now-lastFired<COOLDOWN)return;lastFired=now;if(!isListening)toggleMic();}}
-  if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){document.addEventListener('touchend',async function ask(){try{const res=await DeviceMotionEvent.requestPermission();if(res==='granted')window.addEventListener('devicemotion',onMotion);}catch(e){}document.removeEventListener('touchend',ask);},{once:true});}
-  else window.addEventListener('devicemotion',onMotion);
-})();
+let shakeListenerAdded=false, shakeLast=null, shakeLastFired=0;
+function onShakeMotion(e){
+  const a=e.accelerationIncludingGravity;
+  if(!a) return;
+  if(!shakeLast){shakeLast={x:a.x,y:a.y,z:a.z};return;}
+  const dx=Math.abs(a.x-shakeLast.x),dy=Math.abs(a.y-shakeLast.y),dz=Math.abs(a.z-shakeLast.z);
+  shakeLast={x:a.x,y:a.y,z:a.z};
+  if(dx+dy+dz>18){
+    const now=Date.now();
+    if(now-shakeLastFired<2000) return;
+    shakeLastFired=now;
+    if(!micReady){
+      showToast('먼저 음성 입력 버튼을 한 번 눌러 마이크 권한을 허용해 주세요');
+      return;
+    }
+    if(!isListening) toggleMic();
+  }
+}
+function startShakeListener(){
+  if(shakeListenerAdded) return;
+  window.addEventListener('devicemotion',onShakeMotion);
+  shakeListenerAdded=true;
+}
+async function toggleShake(){
+  if(settings.shakeEnabled==='1'){
+    saveSetting('shakeEnabled','0');
+    document.getElementById('toggle-shake').className='toggle';
+    if(shakeListenerAdded){window.removeEventListener('devicemotion',onShakeMotion);shakeListenerAdded=false;}
+    showToast('흔들어 음성 입력 꺼짐');
+    return;
+  }
+  try{
+    if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
+      const res=await DeviceMotionEvent.requestPermission();
+      if(res!=='granted'){showToast('동작 및 방향 권한이 필요해요');return;}
+    }
+    startShakeListener();
+    saveSetting('shakeEnabled','1');
+    document.getElementById('toggle-shake').className='toggle on';
+    showToast('📳 흔들어 음성 입력 켜짐');
+  }catch(e){
+    showToast('흔들기 권한 요청에 실패했어요');
+  }
+}
 
 // ── AUTO REFRESH ──
 setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
@@ -1122,14 +1154,6 @@ setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
 loadSettings();
 loadAll().then(()=>{initRealtime();});
 
-// 앱 첫 터치 때 마이크 권한을 한 번 먼저 받아둠.
-// iPhone에서는 페이지 로드만으로 권한 팝업을 띄울 수 없어, 첫 사용자 동작에서 처리하는 것이 가장 이른 시점임.
-micPrimedThisSession=sessionStorage.getItem('micPrimedThisSession')==='1';
-if(!micPrimedThisSession){
-  const primeOnce=()=>{primeMicPermission();};
-  document.addEventListener('pointerdown',primeOnce,{once:true});
-  document.addEventListener('touchend',primeOnce,{once:true});
-}
 </script>
 </body>
 </html>
