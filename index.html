@@ -1094,9 +1094,9 @@ setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
 loadSettings();
 loadAll().then(()=>{initRealtime();});
 
-// Mic permission check only (스트림 열지 않음 - 자동 켜짐 버그 방지)
-(async()=>{try{if(navigator.permissions){const p=await navigator.permissions.query({name:'microphone'});if(p.state==='prompt'){// 첫 터치시 권한 요청 (자동으로 마이크 켜지지 않음)
-document.addEventListener('touchend',async function ask(){try{await navigator.mediaDevices.getUserMedia({audio:true}).then(s=>s.getTracks().forEach(t=>t.stop()));}catch(e){}document.removeEventListener('touchend',ask);},{once:true});}}}catch(e){}})();
+// iPhone 홈화면 PWA에서는 마이크 권한을 앱 시작 시 미리 요청하지 않음.
+// 실제 음성 입력 버튼을 눌렀을 때만 SpeechRecognition이 권한을 요청하도록 둔다.
+// (사전 getUserMedia 요청을 넣으면 iOS에서 권한 팝업이 불필요하게 한 번 더 뜰 수 있음)
 </script>
 </body>
 </html>
