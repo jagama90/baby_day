@@ -194,6 +194,8 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
 /* TOAST */
 .toast{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(26,29,46,.9);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
+.toast.success{background:#10B981}
+.toast.error{background:#EF4444}
 
 /* PAGES */
 .page{display:none;padding-bottom:140px}.page.show{display:block}
@@ -407,7 +409,7 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
       </label>
     </div>
     <div class="settings-row">
-      <div><div class="settings-lbl">🔗 공유 링크</div><div class="settings-sub">읽기 전용 오늘 기록 공유</div></div>
+      <div><div class="settings-lbl">📋 오늘 기록 복사</div><div class="settings-sub">오늘 기록을 클립보드에 복사</div></div>
       <button onclick="copyShareLink()" style="padding:8px 14px;background:var(--primary-bg);color:var(--primary);border-radius:var(--rs);font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:inherit">복사</button>
     </div>
     <div class="settings-row">
@@ -436,6 +438,7 @@ let statsPeriod='day', statsOffset=0;
 let currentTab='home';
 let settings={};
 let sleepTimerInterval=null;
+let lastFeedAlertId='';
 
 // ── HELPERS ──
 const pad=n=>String(n).padStart(2,'0');
@@ -483,11 +486,22 @@ function toggleDark(){const on=document.body.classList.toggle('dark');saveSettin
 
 // ── PUSH NOTIFICATIONS ──
 async function togglePush(){
-  if(settings.pushEnabled==='1'){saveSetting('pushEnabled','0');document.getElementById('toggle-push').className='toggle';showToast('알림 꺼짐');return;}
-  if(!('Notification' in window)){showToast('이 브라우저는 알림을 지원하지 않아요');return;}
+  if(settings.pushEnabled==='1'){
+    saveSetting('pushEnabled','0');
+    lastFeedAlertId='';
+    document.getElementById('toggle-push').className='toggle';
+    showToast('알림 꺼짐');
+    return;
+  }
+  if(!('Notification' in window)){showToast('이 브라우저는 알림을 지원하지 않아요','error');return;}
   const perm=await Notification.requestPermission();
-  if(perm==='granted'){saveSetting('pushEnabled','1');document.getElementById('toggle-push').className='toggle on';showToast('🔔 알림 켜짐!');}
-  else showToast('알림 권한이 거부됐어요');
+  if(perm==='granted'){
+    saveSetting('pushEnabled','1');
+    lastFeedAlertId='';
+    document.getElementById('toggle-push').className='toggle on';
+    showToast('🔔 알림 켜짐!','success');
+  }
+  else showToast('알림 권한이 거부됐어요','error');
 }
 function sendPushIfNeeded(msg){
   if(settings.pushEnabled==='1'&&Notification.permission==='granted') new Notification('👶 아기 기록',{body:msg,icon:'https://cdn.jsdelivr.net/npm/emoji-datasource-apple@15.0.1/img/apple/64/1f476.png'});
@@ -496,7 +510,14 @@ function checkPushAlerts(){
   if(settings.pushEnabled!=='1') return;
   const wh=parseInt(settings.feedWarnHour||3);
   const last=[...records].filter(r=>r.type==='formula'||r.type==='breast').sort((a,b)=>b.start_time>a.start_time?1:-1)[0];
-  if(last){const h=(Date.now()-new Date(last.start_time))/3600000;if(h>=wh)sendPushIfNeeded(`마지막 수유 ${Math.floor(h)}시간 ${Math.floor((h%1)*60)}분 경과`);}
+
+  if(last){
+    const h=(Date.now()-new Date(last.start_time))/3600000;
+    if(h>=wh && lastFeedAlertId!==last.id){
+      sendPushIfNeeded(`마지막 수유 ${Math.floor(h)}시간 ${Math.floor((h%1)*60)}분 경과`);
+      lastFeedAlertId=last.id;
+    }
+  }
 }
 
 // ── SHARE LINK ──
@@ -544,7 +565,7 @@ function importCSV(input){
 async function loadAll(){
   setSyncState('loading','불러오는 중...');
   try{
-    records=await apiGet('baby_logs?order=start_time.desc&limit=1000');
+    records=await apiGet('baby_logs?order=start_time.desc&limit=5000');
     setSyncState('on','실시간 동기화 중');
     render();
   }catch(e){setSyncState('off','연결 실패');showToast('로드 실패: '+e.message);}
@@ -1108,7 +1129,15 @@ async function handleVoice(txt){
 }
 
 // ── TOAST ──
-function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+function showToast(msg,type='default'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast'+(type==='success'?' success':type==='error'?' error':'');
+  el.classList.add('show');
+
+  clearTimeout(showToast._timer);
+  showToast._timer=setTimeout(()=>el.classList.remove('show'),2500);
+}
 
 // ── SHAKE ──
 (function(){
