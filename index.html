@@ -170,6 +170,53 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt)
 /* TOAST */
 .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(26,29,46,.9);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
+
+/* TAB BAR */
+.tab-bar{display:flex;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+.tab-btn{flex:1;padding:11px 4px;text-align:center;font-size:13px;font-weight:500;color:var(--txt2);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;transition:all .15s}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+
+/* STATS PAGE */
+.stats-page{padding:0 0 140px;display:none}
+.stats-page.show{display:block}
+.main-page{display:block}
+.main-page.hide{display:none}
+
+/* AI SUMMARY CARD */
+.ai-card{margin:12px 16px;background:linear-gradient(135deg,#5B7BFF 0%,#7B6CF6 100%);border-radius:var(--r);padding:16px;color:#fff}
+.ai-card-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ai-badge{background:rgba(255,255,255,.25);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700}
+.ai-text{font-size:14px;line-height:1.7;opacity:.95}
+.ai-text strong{font-weight:700;opacity:1}
+
+/* STAT SECTION */
+.stat-section{margin:0 16px 16px;background:#fff;border-radius:var(--r);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.stat-section-hd{display:flex;align-items:center;gap:8px;padding:14px 16px 10px;border-bottom:1px solid var(--border)}
+.stat-section-hd span{font-size:15px;font-weight:700}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:0.5px solid var(--border)}
+.stat-row:last-child{border-bottom:none}
+.stat-lbl{font-size:13px;color:var(--txt2)}
+.stat-val{font-size:14px;font-weight:600}
+.stat-bar-wrap{padding:8px 16px 14px}
+.stat-bar-bg{background:var(--bg);border-radius:20px;height:8px;overflow:hidden;margin-top:4px}
+.stat-bar-fill{height:100%;border-radius:20px;transition:width .6s ease}
+
+/* WEEK CHART */
+.week-chart{padding:12px 16px 16px}
+.wc-row{display:flex;align-items:flex-end;gap:6px;height:80px;margin-bottom:6px}
+.wc-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.wc-bar-bg{width:100%;border-radius:6px 6px 0 0;background:var(--bg);display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.wc-bar-fill{width:100%;border-radius:6px 6px 0 0;transition:height .5s ease}
+.wc-label{font-size:10px;color:var(--txt3);text-align:center}
+.wc-today .wc-label{color:var(--primary);font-weight:700}
+
+/* PERIOD NAV */
+.period-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border-bottom:1px solid var(--border);margin-bottom:0}
+.period-nav span{font-size:14px;font-weight:600}
+.period-btn{background:none;border:none;font-size:20px;color:var(--txt2);cursor:pointer;padding:4px 10px}
+.period-tabs{display:flex;gap:4px;background:var(--bg);border-radius:20px;padding:3px}
+.period-tab{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--txt2);font-family:inherit}
+.period-tab.sel{background:#fff;color:var(--primary);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 </style>
 </head>
 <body>
@@ -198,6 +245,14 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt)
   </div>
 </div>
 
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-home" onclick="switchTab('home')">📋 기록</button>
+  <button class="tab-btn" id="tab-stats" onclick="switchTab('stats')">📊 통계</button>
+</div>
+
+<div class="main-page" id="main-page">
 <!-- 퀵버튼 (상단) -->
 <div class="quick-row">
   <div class="qb" onclick="quickAdd('sleep')"><div class="qb-icon sleep">😴</div><div class="qb-name">수면</div></div>
@@ -222,6 +277,25 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt)
 
 <div class="chips" id="chips"></div>
 <div class="log-list" id="log-list"></div>
+
+
+</div><!-- end main-page -->
+
+<!-- STATS PAGE -->
+<div class="stats-page" id="stats-page">
+  <div class="period-nav">
+    <div class="period-tabs">
+      <button class="period-tab sel" id="pt-day" onclick="setPeriod('day')">일</button>
+      <button class="period-tab" id="pt-week" onclick="setPeriod('week')">주</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px">
+      <button class="period-btn" onclick="shiftPeriod(-1)">‹</button>
+      <span id="period-label"></span>
+      <button class="period-btn" onclick="shiftPeriod(1)">›</button>
+    </div>
+  </div>
+  <div id="stats-content"></div>
+</div>
 
 <div class="fab-bar">
   <button class="fab-mic" id="mic-btn" onclick="toggleMic()">🎙 음성 입력</button>
@@ -732,6 +806,216 @@ async function handleVoice(txt){
   }
 
   showToast('"'+txt+'" — 인식 실패');
+}
+
+
+// ── TAB & STATS ──
+let currentTab = 'home';
+let statsPeriod = 'day';
+let statsOffset = 0;
+
+function switchTab(tab){
+  currentTab = tab;
+  document.getElementById('main-page').className = 'main-page' + (tab==='home'?'':' hide');
+  document.getElementById('stats-page').className = 'stats-page' + (tab==='stats'?' show':'');
+  document.getElementById('tab-home').className = 'tab-btn' + (tab==='home'?' active':'');
+  document.getElementById('tab-stats').className = 'tab-btn' + (tab==='stats'?' active':'');
+  if(tab==='stats') renderStats();
+}
+
+function setPeriod(p){
+  statsPeriod=p; statsOffset=0;
+  ['day','week'].forEach(x=>{ document.getElementById('pt-'+x).className='period-tab'+(x===p?' sel':''); });
+  renderStats();
+}
+
+function shiftPeriod(d){ statsOffset+=d; renderStats(); }
+
+function getPeriodRecs(){
+  const now = new Date();
+  if(statsPeriod==='day'){
+    const d = new Date(now); d.setDate(d.getDate()+statsOffset);
+    const ds = fmtDate(d);
+    return { recs: records.filter(r=>r.date===ds), label: (d.getMonth()+1)+'월 '+d.getDate()+'일', ds };
+  } else {
+    // week: Mon~Sun
+    const d = new Date(now);
+    d.setDate(d.getDate() + statsOffset*7);
+    const day = d.getDay();
+    const mon = new Date(d); mon.setDate(d.getDate() - (day===0?6:day-1));
+    const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    const dates = [];
+    for(let i=0;i<7;i++){ const x=new Date(mon); x.setDate(mon.getDate()+i); dates.push(fmtDate(x)); }
+    return {
+      recs: records.filter(r=>dates.includes(r.date)),
+      label: (mon.getMonth()+1)+'월 '+mon.getDate()+'일 ~ '+(sun.getMonth()+1)+'월 '+sun.getDate()+'일',
+      dates
+    };
+  }
+}
+
+async function renderStats(){
+  const {recs, label, ds, dates} = getPeriodRecs();
+  document.getElementById('period-label').textContent = label;
+
+  // compute stats
+  const sleepRecs = recs.filter(r=>r.type==='sleep'&&r.end_time);
+  const napRecs = sleepRecs.filter(r=>r.sleep_kind==='nap');
+  const nightRecs = sleepRecs.filter(r=>r.sleep_kind==='night');
+  const totalSleep = sleepRecs.reduce((s,r)=>s+durMin(r.start_time,r.end_time),0);
+  const napMin = napRecs.reduce((s,r)=>s+durMin(r.start_time,r.end_time),0);
+  const nightMin = nightRecs.reduce((s,r)=>s+durMin(r.start_time,r.end_time),0);
+
+  const formulaRecs = recs.filter(r=>r.type==='formula');
+  const totalFormula = formulaRecs.reduce((s,r)=>s+Number(r.ml||0),0);
+  const avgFormula = formulaRecs.length ? Math.round(totalFormula/formulaRecs.length) : 0;
+
+  const breastRecs = recs.filter(r=>r.type==='breast');
+  const totalBreastMin = breastRecs.reduce((s,r)=>s+(Number(r.left_min||0)+Number(r.right_min||0)),0);
+  const totalLeftMin = breastRecs.reduce((s,r)=>s+Number(r.left_min||0),0);
+  const totalRightMin = breastRecs.reduce((s,r)=>s+Number(r.right_min||0),0);
+
+  const diaperRecs = recs.filter(r=>r.type==='diaper');
+  const urineCount = diaperRecs.filter(r=>r.diaper_kind==='urine'||r.diaper_kind==='both').length;
+  const stoolCount = diaperRecs.filter(r=>r.diaper_kind==='stool'||r.diaper_kind==='both').length;
+
+  // AI summary via Claude API
+  const summaryEl = document.getElementById('stats-content');
+  summaryEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--txt3);font-size:13px">📊 분석 중...</div>';
+
+  let aiText = '';
+  try {
+    const prompt = statsPeriod==='day'
+      ? `아기 육아 기록 AI 요약. 아기 이름: 승준이. 날짜: ${label}. 데이터: 수면 총 ${durLabel(totalSleep)} (낮잠 ${durLabel(napMin)}, 밤잠 ${durLabel(nightMin)}, ${sleepRecs.length}회), 분유 ${totalFormula}ml (${formulaRecs.length}회, 평균 ${avgFormula}ml), 모유 총 ${totalBreastMin}분 (${breastRecs.length}회, 왼쪽 ${totalLeftMin}분 오른쪽 ${totalRightMin}분), 기저귀 소변 ${urineCount}회 대변 ${stoolCount}회. 2~3문장으로 자연스럽고 따뜻하게 오늘 하루 요약. "승준이는" 으로 시작. 수치 강조. 한국어로.`
+      : `아기 육아 기록 AI 주간 요약. 아기 이름: 승준이. 기간: ${label}. 데이터: 수면 총 ${durLabel(totalSleep)} (${sleepRecs.length}회), 분유 총 ${totalFormula}ml (${formulaRecs.length}회), 모유 총 ${totalBreastMin}분 (${breastRecs.length}회), 기저귀 소변 ${urineCount}회 대변 ${stoolCount}회. 2~3문장으로 이번 주 패턴 요약. "이번 주 승준이는" 으로 시작. 한국어로.`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:300,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await res.json();
+    aiText = data.content?.[0]?.text || '';
+  } catch(e){ aiText=''; }
+
+  // render
+  const periodTag = statsPeriod==='day'?'오늘 요약':'주간 요약';
+
+  // week chart data
+  let weekChartHtml = '';
+  if(statsPeriod==='week' && dates){
+    const dayLabels=['월','화','수','목','금','토','일'];
+    const maxSleep = Math.max(...dates.map(ds=>{ const r=records.filter(x=>x.date===ds&&x.type==='sleep'&&x.end_time); return r.reduce((s,x)=>s+durMin(x.start_time,x.end_time),0); }),1);
+    const maxFormula = Math.max(...dates.map(ds=>{ const r=records.filter(x=>x.date===ds&&x.type==='formula'); return r.reduce((s,x)=>s+Number(x.ml||0),0); }),1);
+    const todStr = todayStr();
+
+    weekChartHtml = `
+    <div class="stat-section" style="margin-bottom:16px">
+      <div class="stat-section-hd"><span>😴 요일별 수면</span></div>
+      <div class="week-chart">
+        <div class="wc-row">
+          ${dates.map((ds,i)=>{
+            const r=records.filter(x=>x.date===ds&&x.type==='sleep'&&x.end_time);
+            const min=r.reduce((s,x)=>s+durMin(x.start_time,x.end_time),0);
+            const nap=r.filter(x=>x.sleep_kind==='nap').reduce((s,x)=>s+durMin(x.start_time,x.end_time),0);
+            const night=min-nap;
+            const pct=Math.round(min/maxSleep*100);
+            const napPct=min?Math.round(nap/min*100):0;
+            const isToday=ds===todStr;
+            return `<div class="wc-bar-wrap${isToday?' wc-today':''}">
+              <div class="wc-bar-bg" style="height:${pct}%;min-height:${min?4:0}px;max-height:70px">
+                <div style="height:${100-napPct}%;background:var(--sleep);opacity:.9;border-radius:6px 6px 0 0"></div>
+                <div style="height:${napPct}%;background:var(--sleep);opacity:.45"></div>
+              </div>
+              <div class="wc-label">${dayLabels[i]}</div>
+              ${min?`<div style="font-size:9px;color:var(--txt3);text-align:center">${Math.floor(min/60)}h</div>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="display:flex;gap:12px;font-size:11px;color:var(--txt2);padding-top:4px">
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--sleep);opacity:.9;vertical-align:middle;margin-right:3px"></span>밤잠</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--sleep);opacity:.45;vertical-align:middle;margin-right:3px"></span>낮잠</span>
+        </div>
+      </div>
+    </div>
+    <div class="stat-section" style="margin-bottom:16px">
+      <div class="stat-section-hd"><span>🍼 요일별 분유</span></div>
+      <div class="week-chart">
+        <div class="wc-row">
+          ${dates.map((ds,i)=>{
+            const r=records.filter(x=>x.date===ds&&x.type==='formula');
+            const ml=r.reduce((s,x)=>s+Number(x.ml||0),0);
+            const pct=Math.round(ml/maxFormula*100);
+            const isToday=ds===todStr;
+            return `<div class="wc-bar-wrap${isToday?' wc-today':''}">
+              <div class="wc-bar-bg" style="height:${pct}%;min-height:${ml?4:0}px;max-height:70px">
+                <div style="height:100%;background:var(--formula);border-radius:6px 6px 0 0"></div>
+              </div>
+              <div class="wc-label">${dayLabels[i]}</div>
+              ${ml?`<div style="font-size:9px;color:var(--txt3);text-align:center">${ml}ml</div>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  summaryEl.innerHTML = `
+    ${aiText ? `
+    <div class="ai-card">
+      <div class="ai-card-top">
+        <span style="font-size:20px">✨</span>
+        <span class="ai-badge">AI ${periodTag}</span>
+      </div>
+      <div class="ai-text">${aiText.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>
+    </div>` : ''}
+
+    ${weekChartHtml}
+
+    <div class="stat-section">
+      <div class="stat-section-hd"><span>😴 수면</span></div>
+      ${totalSleep ? `
+      <div class="stat-row"><span class="stat-lbl">총 수면</span><span class="stat-val">${durLabel(totalSleep)}</span></div>
+      <div class="stat-row"><span class="stat-lbl">🌙 낮잠</span><span class="stat-val" style="color:var(--sleep)">${durLabel(napMin)} · ${napRecs.length}회</span></div>
+      <div class="stat-row"><span class="stat-lbl">⭐ 밤잠</span><span class="stat-val" style="color:var(--sleep)">${durLabel(nightMin)} · ${nightRecs.length}회</span></div>
+      <div class="stat-bar-wrap">
+        <div style="font-size:11px;color:var(--txt2);margin-bottom:4px">낮잠 vs 밤잠 비율</div>
+        <div class="stat-bar-bg">
+          <div class="stat-bar-fill" style="width:${totalSleep?Math.round(napMin/totalSleep*100):0}%;background:linear-gradient(90deg,var(--sleep) 0%,var(--sleep-bg) 100%)"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-top:3px"><span>낮잠 ${totalSleep?Math.round(napMin/totalSleep*100):0}%</span><span>밤잠 ${totalSleep?Math.round(nightMin/totalSleep*100):0}%</span></div>
+      </div>` : '<div style="padding:14px 16px;font-size:13px;color:var(--txt3)">수면 기록 없음</div>'}
+    </div>
+
+    <div class="stat-section">
+      <div class="stat-section-hd"><span>🍼 분유</span></div>
+      ${formulaRecs.length ? `
+      <div class="stat-row"><span class="stat-lbl">총 섭취량</span><span class="stat-val" style="color:var(--formula)">${totalFormula}ml</span></div>
+      <div class="stat-row"><span class="stat-lbl">횟수</span><span class="stat-val">${formulaRecs.length}회</span></div>
+      <div class="stat-row"><span class="stat-lbl">회당 평균</span><span class="stat-val">${avgFormula}ml</span></div>` : '<div style="padding:14px 16px;font-size:13px;color:var(--txt3)">분유 기록 없음</div>'}
+    </div>
+
+    <div class="stat-section">
+      <div class="stat-section-hd"><span>🤱 모유</span></div>
+      ${breastRecs.length ? `
+      <div class="stat-row"><span class="stat-lbl">총 수유 시간</span><span class="stat-val" style="color:var(--breast)">${durLabel(totalBreastMin)}</span></div>
+      <div class="stat-row"><span class="stat-lbl">횟수</span><span class="stat-val">${breastRecs.length}회</span></div>
+      <div class="stat-row"><span class="stat-lbl">👈 왼쪽</span><span class="stat-val">${durLabel(totalLeftMin)}</span></div>
+      <div class="stat-row"><span class="stat-lbl">👉 오른쪽</span><span class="stat-val">${durLabel(totalRightMin)}</span></div>` : '<div style="padding:14px 16px;font-size:13px;color:var(--txt3)">모유 기록 없음</div>'}
+    </div>
+
+    <div class="stat-section">
+      <div class="stat-section-hd"><span>💧 기저귀</span></div>
+      ${diaperRecs.length ? `
+      <div class="stat-row"><span class="stat-lbl">총 횟수</span><span class="stat-val" style="color:var(--diaper)">${diaperRecs.length}회</span></div>
+      <div class="stat-row"><span class="stat-lbl">💧 소변</span><span class="stat-val">${urineCount}회</span></div>
+      <div class="stat-row"><span class="stat-lbl">💩 대변</span><span class="stat-val">${stoolCount}회</span></div>` : '<div style="padding:14px 16px;font-size:13px;color:var(--txt3)">기저귀 기록 없음</div>'}
+    </div>
+  `;
 }
 
 // ── CALENDAR ──
