@@ -774,6 +774,41 @@ function showToast(msg){ const el=document.getElementById('toast'); el.textConte
 // ── AUTO REFRESH ──
 setInterval(()=>{ renderLastBar(); },60000);
 
+// ── SHAKE TO MIC ──
+(function(){
+  const THRESHOLD = 18; // 흔들기 감도 (낮을수록 민감)
+  const COOLDOWN = 2000; // 연속 감지 방지 (ms)
+  let last = {x:0,y:0,z:0};
+  let lastFired = 0;
+
+  function onMotion(e){
+    const a = e.accelerationIncludingGravity;
+    if(!a) return;
+    const dx=Math.abs(a.x-last.x), dy=Math.abs(a.y-last.y), dz=Math.abs(a.z-last.z);
+    last={x:a.x,y:a.y,z:a.z};
+    if(dx+dy+dz > THRESHOLD){
+      const now=Date.now();
+      if(now-lastFired < COOLDOWN) return;
+      lastFired=now;
+      if(!isListening) toggleMic();
+    }
+  }
+
+  // iOS 13+ 는 권한 요청 필요
+  if(typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function'){
+    // 첫 터치 시 권한 요청 (자동 실행 불가)
+    document.addEventListener('touchend', async function ask(){
+      try{
+        const res = await DeviceMotionEvent.requestPermission();
+        if(res === 'granted') window.addEventListener('devicemotion', onMotion);
+      }catch(e){}
+      document.removeEventListener('touchend', ask);
+    }, {once:true});
+  } else {
+    window.addEventListener('devicemotion', onMotion);
+  }
+})();
+
 // ── INIT ──
 _sk='nap'; _dk='urine';
 
