@@ -1094,8 +1094,9 @@ setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
 loadSettings();
 loadAll().then(()=>{initRealtime();});
 
-// Mic prewarm
-(async()=>{try{if(navigator.permissions){const p=await navigator.permissions.query({name:'microphone'});if(p.state==='granted')return;}await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){}})();
+// Mic permission check only (스트림 열지 않음 - 자동 켜짐 버그 방지)
+(async()=>{try{if(navigator.permissions){const p=await navigator.permissions.query({name:'microphone'});if(p.state==='prompt'){// 첫 터치시 권한 요청 (자동으로 마이크 켜지지 않음)
+document.addEventListener('touchend',async function ask(){try{await navigator.mediaDevices.getUserMedia({audio:true}).then(s=>s.getTracks().forEach(t=>t.stop()));}catch(e){}document.removeEventListener('touchend',ask);},{once:true});}}}catch(e){}})();
 </script>
 </body>
 </html>
