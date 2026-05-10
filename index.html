@@ -77,7 +77,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt)
 .chip.diaper{background:var(--diaper-bg);color:var(--diaper)}
 
 /* LOG LIST */
-.log-list{padding:12px 16px 110px}
+.log-list{padding:12px 16px 140px}
 .log-card{background:var(--card);border-radius:var(--r);padding:13px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .li-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .li-icon.sleep{background:var(--sleep-bg)}
@@ -106,11 +106,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt)
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* BOTTOM FAB */
-.fab-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;border-top:1px solid var(--border);padding:10px 16px 28px;display:flex;gap:8px;z-index:100}
-.fab-mic{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.fab-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;border-top:1px solid var(--border);padding:12px 16px 36px;display:flex;gap:8px;z-index:100}
+.fab-mic{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:26px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:20px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
 .fab-mic.on{background:#E8667A;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.75}}
-.fab-add{padding:14px 18px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);font-size:22px;cursor:pointer}
 
 /* VOICE OVERLAY */
 .voice-overlay{position:fixed;inset:0;background:rgba(10,10,30,.88);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
@@ -202,8 +201,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt)
 <!-- 퀵버튼 (상단) -->
 <div class="quick-row">
   <div class="qb" onclick="quickAdd('sleep')"><div class="qb-icon sleep">😴</div><div class="qb-name">수면</div></div>
-  <div class="qb" onclick="quickAdd('formula')"><div class="qb-icon formula">🍼</div><div class="qb-name">분유</div></div>
-  <div class="qb" onclick="quickAdd('breast')"><div class="qb-icon breast">🤱</div><div class="qb-name">모유</div></div>
+  <div class="qb" onclick="openModal({type:'formula'})"><div class="qb-icon formula">🍼</div><div class="qb-name">분유</div></div>
+  <div class="qb" onclick="openModal({type:'breast'})"><div class="qb-icon breast">🤱</div><div class="qb-name">모유</div></div>
   <div class="qb" onclick="quickAdd('diaper','urine')"><div class="qb-icon diaper">💧</div><div class="qb-name">소변</div></div>
   <div class="qb" onclick="quickAdd('diaper','stool')"><div class="qb-icon diaper">💩</div><div class="qb-name">대변</div></div>
   <div class="qb" onclick="quickAdd('diaper','both')"><div class="qb-icon diaper">🔄</div><div class="qb-name">둘다</div></div>
@@ -226,7 +225,6 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt)
 
 <div class="fab-bar">
   <button class="fab-mic" id="mic-btn" onclick="toggleMic()">🎙 음성 입력</button>
-  <button class="fab-add" onclick="openModal()">＋</button>
 </div>
 
 <!-- Voice -->
@@ -235,7 +233,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt)
   <div class="voice-tip" id="voice-tip">말씀해주세요</div>
   <div class="voice-hint">
     "분유 120" · "모유 왼쪽 8분 오른쪽 5분"<br>
-    "기저귀 대변" · "낮잠 시작" · "수면 끝"
+    "기저귀 대변" · "수면 끝" · "방금 입력한거 삭제"
   </div>
   <button class="voice-cancel" onclick="stopMic()">취소</button>
 </div>
@@ -649,55 +647,91 @@ function toggleMic(){
   if(!SR){ alert('음성인식을 지원하지 않는 브라우저예요.\niOS Safari를 사용해주세요.'); return; }
   recog=new SR();
   recog.lang='ko-KR'; recog.continuous=false; recog.interimResults=false;
-  recog.onstart=()=>{ isListening=true; document.getElementById('voice-overlay').classList.remove('hidden'); document.getElementById('mic-btn').classList.add('on'); document.getElementById('mic-btn').textContent='🔴 듣는 중...'; };
+  recog.onstart=()=>{
+    isListening=true;
+    document.getElementById('voice-overlay').classList.remove('hidden');
+    document.getElementById('mic-btn').classList.add('on');
+    document.getElementById('mic-btn').textContent='🔴 듣는 중...';
+  };
   recog.onresult=(e)=>{ const txt=e.results[0][0].transcript; stopMic(); handleVoice(txt); };
-  recog.onerror=()=>stopMic();
+  recog.onerror=(e)=>{ if(e.error!=='aborted') stopMic(); };
   recog.onend=()=>stopMic();
+  // 이미 캐시된 스트림 있으면 권한 팝업 안 뜸
   recog.start();
 }
 function stopMic(){ isListening=false; try{recog&&recog.stop();}catch(e){} document.getElementById('voice-overlay').classList.add('hidden'); document.getElementById('mic-btn').classList.remove('on'); document.getElementById('mic-btn').textContent='🎙 음성 입력'; }
 
 async function handleVoice(txt){
   const t=txt.trim();
+  const now=new Date();
+  const iso=now.toISOString();
+  const ds=fmtDate(now);
   const nt=nowTime();
 
   // 수면 끝
   if(/수면\s*끝|잠\s*깼|기상|일어났/.test(t)){
     const ongoing=records.find(r=>r.type==='sleep'&&!r.end_time);
     if(ongoing){
-      const now=new Date().toISOString();
-      await apiPatch(ongoing.id,{end_time:now});
-      showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,now)));
+      await apiPatch(ongoing.id,{end_time:iso});
+      showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,iso)));
       await loadAll(); return;
     } else { showToast('진행 중인 수면 기록이 없어요'); return; }
   }
 
-  let prefill={start_time: fmtDate(selDate)+'T'+nt+':00'};
-  if(/분유/.test(t)){
-    prefill.type='formula';
-    const m=t.match(/(\d+)/); if(m) prefill.ml=parseInt(m[1]);
-  } else if(/모유|수유/.test(t)){
-    prefill.type='breast';
-    const lm=t.match(/왼(쪽)?\s*(\d+)/); if(lm) prefill.left_min=parseInt(lm[2]);
-    const rm=t.match(/오른(쪽)?\s*(\d+)/); if(rm) prefill.right_min=parseInt(rm[2]);
-    // 단순히 숫자만 말한 경우 (예: "모유 10분") → 왼쪽으로
-    if(!prefill.left_min && !prefill.right_min){
-      const nm=t.match(/(\d+)\s*분?/); if(nm){ prefill.left_min=parseInt(nm[1]); }
-    }
-    // 전역 변수 즉시 반영 (openModal 호출 전에 세팅)
-    leftMin = prefill.left_min || 0;
-    rightMin = prefill.right_min || 0;
-  } else if(/기저귀|소변|대변/.test(t)){
-    prefill.type='diaper';
-    _dk=/대변/.test(t)&&/소변/.test(t)?'both':/대변/.test(t)?'stool':'urine';
-    prefill.diaper_kind=_dk;
-  } else if(/수면|잠|낮잠|밤잠|자/.test(t)){
-    prefill.type='sleep';
-    prefill.sleep_kind=/밤잠/.test(t)?'night':autoSleepKind(new Date());
-    _sk=prefill.sleep_kind;
+  // 수면 시작
+  if(/수면|잠|낮잠|밤잠|자/.test(t)){
+    const sk=/밤잠/.test(t)?'night':autoSleepKind(now);
+    await apiPost({type:'sleep', date:ds, start_time:iso, sleep_kind:sk});
+    showToast('😴 '+(sk==='nap'?'낮잠':'밤잠')+' 시작');
+    await loadAll(); return;
   }
-  if(prefill.type){ openModal(prefill); }
-  else { showToast('"'+txt+'" — 인식 실패'); }
+
+  // 기저귀
+  if(/기저귀|소변|대변/.test(t)){
+    const kind=/대변/.test(t)&&/소변/.test(t)?'both':/대변/.test(t)?'stool':'urine';
+    await apiPost({type:'diaper', date:ds, start_time:iso, diaper_kind:kind});
+    showToast('💧 '+{urine:'소변',stool:'대변',both:'소변+대변'}[kind]+' 기록됨');
+    await loadAll(); return;
+  }
+
+  // 분유 - 바로 저장
+  if(/분유/.test(t)){
+    const m=t.match(/(\d+)/);
+    const ml=m?parseInt(m[1]):0;
+    await apiPost({type:'formula', date:ds, start_time:iso, ml});
+    showToast('🍼 분유 '+ml+'ml 기록됨');
+    await loadAll(); return;
+  }
+
+  // 모유 - 바로 저장
+  if(/모유|수유/.test(t)){
+    const lm=t.match(/왼(쪽)?\s*(\d+)/);
+    const rm=t.match(/오른(쪽)?\s*(\d+)/);
+    let lMin=lm?parseInt(lm[2]):0;
+    let rMin=rm?parseInt(rm[2]):0;
+    // "모유 10분" 처럼 방향 없이 숫자만 → 왼쪽으로
+    if(!lMin&&!rMin){ const nm=t.match(/(\d+)\s*분?/); if(nm) lMin=parseInt(nm[1]); }
+    await apiPost({type:'breast', date:ds, start_time:iso, left_min:lMin, right_min:rMin});
+    const parts=[];
+    if(lMin) parts.push('왼쪽 '+lMin+'분');
+    if(rMin) parts.push('오른쪽 '+rMin+'분');
+    showToast('🤱 모유 '+(parts.join(' ')||'기록됨'));
+    await loadAll(); return;
+  }
+
+  // 방금 입력한거 삭제
+  if(/삭제|취소|지워|잘못/.test(t)){
+    const last=[...records].sort((a,b)=>b.start_time>a.start_time?1:-1)[0];
+    if(last){
+      await apiDelete(last.id);
+      records=records.filter(r=>r.id!==last.id);
+      render();
+      showToast('🗑 방금 기록 삭제됨 ('+LABEL[last.type]+')');
+    } else { showToast('삭제할 기록이 없어요'); }
+    return;
+  }
+
+  showToast('"'+txt+'" — 인식 실패');
 }
 
 // ── CALENDAR ──
@@ -741,7 +775,22 @@ function showToast(msg){ const el=document.getElementById('toast'); el.textConte
 setInterval(()=>{ renderLastBar(); },60000);
 
 // ── INIT ──
-loadAll().then(()=>initRealtime());
+_sk='nap'; _dk='urine';
+
+// 마이크 권한 미리 요청 (한 번만)
+let micStream = null;
+async function prewarmMic(){
+  try{
+    if(navigator.permissions){
+      const perm = await navigator.permissions.query({name:'microphone'});
+      if(perm.state === 'granted') return; // 이미 허용됨
+    }
+    // 아직 허용 안 됐으면 한 번만 요청해서 캐시
+    micStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  } catch(e){ /* 거부해도 음성입력 누를 때 다시 요청됨 */ }
+}
+
+loadAll().then(()=>{ initRealtime(); prewarmMic(); });
 </script>
 </body>
 </html>
