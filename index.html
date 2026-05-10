@@ -432,6 +432,7 @@ async function apiDelete(id){ const r=await fetch(SUPA_URL+'/rest/v1/baby_logs?i
 let records=[], selDate=new Date(), calDate=new Date();
 let modalType='sleep', leftMin=0, rightMin=0, _sk='nap', _dk='urine';
 let isListening=false, recog=null;
+let micPrimedThisSession=false, micPrimePromise=null;
 let statsPeriod='day', statsOffset=0;
 let currentTab='home';
 let settings={};
@@ -1039,14 +1040,41 @@ function exportCSV(){
 }
 
 // ── VOICE ──
-function toggleMic(){
+async function primeMicPermission(){
+  if(micPrimedThisSession) return true;
+  if(micPrimePromise) return micPrimePromise;
+  if(!navigator.mediaDevices?.getUserMedia) return false;
+  micPrimePromise=(async()=>{
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      stream.getTracks().forEach(t=>t.stop());
+      micPrimedThisSession=true;
+      sessionStorage.setItem('micPrimedThisSession','1');
+      return true;
+    }catch(e){
+      return false;
+    }finally{
+      micPrimePromise=null;
+    }
+  })();
+  return micPrimePromise;
+}
+
+async function toggleMic(){
   if(isListening){stopMic();return;}
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){alert('iOS Safari를 사용해주세요.');return;}
+
+  // 첫 사용 전에 한 번만 권한을 받아둠.
+  // 이미 앱 첫 터치에서 허용했다면 여기서는 팝업이 다시 뜨지 않음.
+  if(!micPrimedThisSession) await primeMicPermission();
+
   recog=new SR();recog.lang='ko-KR';recog.continuous=false;recog.interimResults=false;
   recog.onstart=()=>{isListening=true;document.getElementById('voice-overlay').classList.remove('hidden');document.getElementById('mic-btn').classList.add('on');document.getElementById('mic-btn').textContent='🔴 듣는 중...';};
   recog.onresult=e=>{const txt=e.results[0][0].transcript;stopMic();handleVoice(txt);};
-  recog.onerror=e=>{if(e.error!=='aborted')stopMic();};recog.onend=()=>stopMic();recog.start();
+  recog.onerror=e=>{if(e.error!=='aborted')stopMic();};
+  recog.onend=()=>stopMic();
+  recog.start();
 }
 function stopMic(){isListening=false;try{recog&&recog.stop();}catch(e){}document.getElementById('voice-overlay').classList.add('hidden');document.getElementById('mic-btn').classList.remove('on');document.getElementById('mic-btn').textContent='🎙 음성 입력';}
 
@@ -1094,9 +1122,14 @@ setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
 loadSettings();
 loadAll().then(()=>{initRealtime();});
 
-// Mic permission check only (스트림 열지 않음 - 자동 켜짐 버그 방지)
-(async()=>{try{if(navigator.permissions){const p=await navigator.permissions.query({name:'microphone'});if(p.state==='prompt'){// 첫 터치시 권한 요청 (자동으로 마이크 켜지지 않음)
-document.addEventListener('touchend',async function ask(){try{await navigator.mediaDevices.getUserMedia({audio:true}).then(s=>s.getTracks().forEach(t=>t.stop()));}catch(e){}document.removeEventListener('touchend',ask);},{once:true});}}}catch(e){}})();
+// 앱 첫 터치 때 마이크 권한을 한 번 먼저 받아둠.
+// iPhone에서는 페이지 로드만으로 권한 팝업을 띄울 수 없어, 첫 사용자 동작에서 처리하는 것이 가장 이른 시점임.
+micPrimedThisSession=sessionStorage.getItem('micPrimedThisSession')==='1';
+if(!micPrimedThisSession){
+  const primeOnce=()=>{primeMicPermission();};
+  document.addEventListener('pointerdown',primeOnce,{once:true});
+  document.addEventListener('touchend',primeOnce,{once:true});
+}
 </script>
 </body>
 </html>
