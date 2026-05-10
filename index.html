@@ -526,7 +526,11 @@ function renderChips(){
 
 function renderLogs(){
   const ds=fmtDate(selDate);
-  const recs=records.filter(r=>r.date===ds).sort((a,b)=>b.start_time>a.start_time?1:-1);
+  const recs=records.filter(r=>r.date===ds).sort((a,b)=>{
+    const ta = a.end_time||a.start_time;
+    const tb = b.end_time||b.start_time;
+    return tb>ta?1:-1;
+  });
   const el=document.getElementById('log-list');
   if(!recs.length){
     el.innerHTML=`<div class="empty"><div class="empty-e">📋</div><div class="empty-t">이 날의 기록이 없어요</div></div>`;
