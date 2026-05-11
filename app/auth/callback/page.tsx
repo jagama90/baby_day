@@ -17,7 +17,6 @@ export default function AuthCallback() {
 
       const user = session.user
 
-      // users 테이블에 없으면 생성
       const { data: existing } = await supabase
         .from('users')
         .select('id')
@@ -33,7 +32,18 @@ export default function AuthCallback() {
         })
         router.push('/onboarding')
       } else {
-        router.push('/dashboard')
+        // 기존 유저 → 아기 있는지 확인
+        const { data: babies } = await supabase
+          .from('baby_members')
+          .select('baby_id')
+          .eq('user_id', user.id)
+          .limit(1)
+
+        if (babies && babies.length > 0) {
+          router.push(`/log?babyId=${babies[0].baby_id}`)
+        } else {
+          router.push('/dashboard')
+        }
       }
     }
 

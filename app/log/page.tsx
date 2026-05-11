@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
+import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 // ── SUPABASE CONFIG ──
 const SUPA_URL = 'https://yaxrymvpbvcpxbfqvzen.supabase.co';
@@ -190,6 +192,20 @@ function LogPageInner() {
     }, 5000);
     return () => clearInterval(iv);
   }, []);
+
+  // ── SCROLL LOCK when modal open ──
+useEffect(() => {
+  const anyModal = showModal || showSettings || showCal || !!editFormula || !!editBreast || !!editDiaper || !!editSleep || showVoice;
+  if (anyModal) {
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+  }
+  return () => {
+    document.body.style.overflow = '';
+  };
+}, [showModal, showSettings, showCal, editFormula, editBreast, editDiaper, editSleep, showVoice]);
+
 
   // ── LOAD SETTINGS ──
   const loadSettings = useCallback(() => {
@@ -646,6 +662,12 @@ function LogPageInner() {
       await apiPost({ type: 'formula', date: nowDs, start_time: iso, ml });
       showToast('🍼 분유 ' + ml + 'ml 기록됨'); await loadAll(); return;
     }
+    if (/목욕/.test(txt)) {
+    await apiPost({ type: 'bath', date: nowDs, start_time: iso });
+    showToast('🛁 목욕 기록됨');
+    await loadAll();
+    return;
+    }
     if (/모유|수유/.test(txt)) {
       const lm = txt.match(/왼(쪽)?\s*(\d+)/), rm = txt.match(/오른(쪽)?\s*(\d+)/);
       let lMin = lm ? parseInt(lm[2]) : 0, rMin = rm ? parseInt(rm[2]) : 0;
@@ -665,6 +687,13 @@ function LogPageInner() {
   };
 
   // ── SAVE SETTINGS ──
+const handleLogout = async () => {
+  await supabase.auth.signOut()
+   const router = useRouter()
+   router.push('/login')
+   
+}
+
   const saveSettings = () => {
     if (sName) saveSetting('babyName', sName);
     if (sBirth) saveSetting('babyBirth', sBirth);
@@ -1244,6 +1273,13 @@ function LogPageInner() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><input className="s-input-sm" type="number" placeholder="3" min="1" max="8" value={sWarn} onChange={e => setSWarn(e.target.value)} /><span style={{ fontSize: '12px', color: 'var(--txt2)' }}>시간</span></div>
             </div>
             <div className="settings-row"><div><div className="settings-lbl">🌙 다크모드</div></div><button className={`toggle${darkMode ? ' on' : ''}`} onClick={toggleDark}></button></div>
+            <button 
+  className="cancel-btn" 
+  style={{color:'#FF6B6B', marginTop:'8px'}}
+  onClick={handleLogout}
+>
+  🚪 로그아웃
+</button>
             <button className="save-btn" style={{ marginTop: '8px' }} onClick={saveSettings}>저장</button>
             <button className="cancel-btn" onClick={() => setShowSettings(false)}>닫기</button>
           </div>
