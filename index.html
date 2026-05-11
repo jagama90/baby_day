@@ -479,15 +479,10 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
 const SUPA_URL='https://yaxrymvpbvcpxbfqvzen.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlheHJ5bXZwYnZjcHhiZnF2emVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzOTM4MDUsImV4cCI6MjA5Mzk2OTgwNX0.f6ESGyRoclBzK_O8lptqP6ZOjFQwj_8tQJ9bEcuxOOQ';
 const H={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
-function fetchWithTimeout(url,opts,ms=10000){
-  const ctrl=new AbortController();
-  const tid=setTimeout(()=>ctrl.abort(),ms);
-  return fetch(url,{...opts,signal:ctrl.signal}).finally(()=>clearTimeout(tid));
-}
-async function apiGet(p){ const r=await fetchWithTimeout(SUPA_URL+'/rest/v1/'+p,{headers:{...H,'Prefer':'return=representation'}}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-async function apiPost(d){ const r=await fetchWithTimeout(SUPA_URL+'/rest/v1/baby_logs',{method:'POST',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify(d)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-async function apiPatch(id,d){ const r=await fetchWithTimeout(SUPA_URL+'/rest/v1/baby_logs?id=eq.'+id,{method:'PATCH',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify(d)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-async function apiDelete(id){ const r=await fetchWithTimeout(SUPA_URL+'/rest/v1/baby_logs?id=eq.'+id,{method:'DELETE',headers:H}); if(!r.ok) throw new Error(await r.text()); }
+async function apiGet(p){ const r=await fetch(SUPA_URL+'/rest/v1/'+p,{headers:{...H,'Prefer':'return=representation'}}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function apiPost(d){ const r=await fetch(SUPA_URL+'/rest/v1/baby_logs',{method:'POST',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify(d)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function apiPatch(id,d){ const r=await fetch(SUPA_URL+'/rest/v1/baby_logs?id=eq.'+id,{method:'PATCH',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify(d)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function apiDelete(id){ const r=await fetch(SUPA_URL+'/rest/v1/baby_logs?id=eq.'+id,{method:'DELETE',headers:H}); if(!r.ok) throw new Error(await r.text()); }
 
 // ── STATE ──
 let records=[], selDate=new Date(), calDate=new Date();
@@ -1590,4 +1585,9 @@ function showToast(msg){const el=document.getElementById('toast');el.textContent
 (function(){
   const THRESHOLD=18,COOLDOWN=2000;let last={x:0,y:0,z:0},lastFired=0;
   function onMotion(e){const a=e.accelerationIncludingGravity;if(!a)return;const dx=Math.abs(a.x-last.x),dy=Math.abs(a.y-last.y),dz=Math.abs(a.z-last.z);last={x:a.x,y:a.y,z:a.z};if(dx+dy+dz>THRESHOLD){const now=Date.now();if(now-lastFired<COOLDOWN)return;lastFired=now;if(!isListening)toggleMic();}}
-  if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){document.addEventListener('touchend',async function ask(){try{const res=await DeviceMotionE
+  if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){document.addEventListener('touchend',async function ask(){try{const res=await DeviceMotionEvent.requestPermission();if(res==='granted')window.addEventListener('devicemotion',onMotion);}catch(e){}document.removeEventListener('touchend',ask);},{once:true});}
+  else window.addEventListener('devicemotion',onMotion);
+})();
+
+// ── AUTO REFRESH ──
+se
