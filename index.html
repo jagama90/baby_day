@@ -85,7 +85,7 @@ body.dark .hd{background:linear-gradient(135deg,#1A2060 0%,#2D1060 100%)}
 /* PREDICT – COMPACT INLINE */
 .predict-bar{display:none}
 .predict-bar.hidden{display:none}
-.predict-inline{background:var(--primary-bg);border:1px solid rgba(91,123,255,.15);border-radius:10px;margin:0 16px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between}
+.predict-inline{background:linear-gradient(135deg,#EEF1FF,#E6EAFF);border:1px solid rgba(91,123,255,.18);border-radius:12px;margin:8px 16px 0;padding:9px 14px;display:flex;align-items:center;justify-content:space-between}
 .predict-inline.hidden{display:none}
 .predict-label{font-size:10px;color:var(--txt2);font-weight:700;letter-spacing:.3px;margin-bottom:1px}
 .predict-val{font-size:17px;font-weight:900;color:var(--primary);letter-spacing:-.8px;line-height:1}
@@ -93,7 +93,7 @@ body.dark .hd{background:linear-gradient(135deg,#1A2060 0%,#2D1060 100%)}
 body.dark .predict-inline{background:linear-gradient(135deg,#1A1F3A,#161830);border-color:rgba(91,123,255,.22)}
 
 /* LAST ACTIVITY – PREMIUM */
-.last-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px 10px;background:var(--card);border-bottom:none}
+.last-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border)}
 .lc{background:linear-gradient(135deg,#F8F9FF,#EEF1FF);border-radius:14px;padding:10px 11px;border:1px solid rgba(91,123,255,.1)}
 .lc-label{font-size:9.5px;color:var(--primary);font-weight:700;margin-bottom:4px;letter-spacing:.3px;text-transform:uppercase}
 .lc-time{font-size:13px;font-weight:800;line-height:1.2;letter-spacing:-.2px}
@@ -309,15 +309,13 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
     <div class="qb" onclick="quickAdd('diaper','both')"><div class="qb-icon diaper">🔄</div><div class="qb-name">둘다</div></div>
     <div class="qb" onclick="quickAdd('bath')"><div class="qb-icon bath">🛁</div><div class="qb-name">목욕</div></div>
   </div>
-  <div style="background:var(--card);border-bottom:1px solid var(--border);padding-bottom:10px">
-    <div class="last-bar" id="last-bar"></div>
-    <div class="predict-inline hidden" id="predict-bar">
-      <div>
-        <div class="predict-label">🍼 다음 수유 예상</div>
-        <div class="predict-val" id="predict-val">--:--</div>
-      </div>
-      <div class="predict-pill" id="predict-in">계산 중</div>
+  <div class="last-bar" id="last-bar"></div>
+  <div class="predict-inline hidden" id="predict-bar">
+    <div>
+      <div class="predict-label">🍼 다음 수유 예상</div>
+      <div class="predict-val" id="predict-val">--:--</div>
     </div>
+    <div class="predict-pill" id="predict-in">계산 중</div>
   </div>
   <div class="warn-banner feed hidden" id="warn-feed">⚠️ <span id="warn-feed-txt"></span></div>
   <div class="date-nav">
@@ -444,10 +442,6 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
       </div>
     </div>
     <div class="settings-row">
-      <div><div class="settings-lbl">🍼 다음 수유 예상 표시</div><div class="settings-sub">홈 화면에 수유 예상 시간 표시</div></div>
-      <button class="toggle" id="toggle-predict" onclick="togglePredict()"></button>
-    </div>
-    <div class="settings-row">
       <div><div class="settings-lbl">🌙 다크모드</div></div>
       <button class="toggle" id="toggle-dark" onclick="toggleDark()"></button>
     </div>
@@ -516,11 +510,10 @@ function detail(r){
 
 // ── SETTINGS ──
 function loadSettings(){
-  ['babyName','babyBirth','formulaGoal','feedWarnHour','darkMode','pushEnabled','babyWeight','avgFormulaMl','predictEnabled'].forEach(k=>{settings[k]=localStorage.getItem(k)||'';});
+  ['babyName','babyBirth','formulaGoal','feedWarnHour','darkMode','pushEnabled','babyWeight','avgFormulaMl'].forEach(k=>{settings[k]=localStorage.getItem(k)||'';});
   if(settings.darkMode==='1')document.body.classList.add('dark');
   document.getElementById('toggle-dark').className='toggle'+(settings.darkMode==='1'?' on':'');
   document.getElementById('toggle-push').className='toggle'+(settings.pushEnabled==='1'?' on':'');
-  document.getElementById('toggle-predict').className='toggle'+(settings.predictEnabled==='1'?' on':'');
 }
 function syncSettingsUI(){
   document.getElementById('s-name').value=settings.babyName||'';
@@ -531,7 +524,6 @@ function syncSettingsUI(){
   document.getElementById('s-avg-formula').value=settings.avgFormulaMl||'';
   document.getElementById('toggle-dark').className='toggle'+(settings.darkMode==='1'?' on':'');
   document.getElementById('toggle-push').className='toggle'+(settings.pushEnabled==='1'?' on':'');
-  document.getElementById('toggle-predict').className='toggle'+(settings.predictEnabled==='1'?' on':'');
 }
 function saveSetting(k,v){settings[k]=v;localStorage.setItem(k,v);}
 function openSettings(){document.getElementById('settings-modal').classList.remove('hidden');syncSettingsUI();}
@@ -555,13 +547,6 @@ function saveSettings(){
   showToast('✅ 설정이 저장됐어요!');
 }
 function toggleDark(){const on=document.body.classList.toggle('dark');saveSetting('darkMode',on?'1':'0');document.getElementById('toggle-dark').className='toggle'+(on?' on':'');}
-function togglePredict(){
-  const on=settings.predictEnabled!=='1';
-  saveSetting('predictEnabled',on?'1':'0');
-  document.getElementById('toggle-predict').className='toggle'+(on?' on':'');
-  renderWarnings();
-  showToast(on?'수유 예상 시간 표시됨':'수유 예상 시간 숨겨짐');
-}
 
 // ── PUSH NOTIFICATIONS ──
 async function togglePush(){
@@ -707,7 +692,6 @@ function renderWarnings(){
   else we.classList.add('hidden');
   // 예측
   const pe=document.getElementById('predict-bar'),pv=document.getElementById('predict-val'),pi=document.getElementById('predict-in');
-  if(settings.predictEnabled!=='1'){pe.classList.add('hidden');return;}
   if(feeds.length>=3){
     const ivs=[];
     for(let i=0;i<Math.min(feeds.length-1,5);i++){const d=new Date(feeds[i].start_time)-new Date(feeds[i+1].start_time);if(d>0&&d<8*3600000)ivs.push(d);}
@@ -1601,4 +1585,33 @@ function showToast(msg){const el=document.getElementById('toast');el.textContent
   else window.addEventListener('devicemotion',onMotion);
 })();
 
-// ── AUTO REFR
+// ── AUTO REFRESH ──
+setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
+
+// ── SECURE MSG ROTATION ──
+(function(){
+  const msgs=[
+    '🔒 모든 기록은 암호화되어 안전하게 저장됩니다',
+    '🛡️ 개인정보는 외부에 절대 공유되지 않습니다',
+    '✅ 실시간 백업으로 소중한 기록을 보호합니다',
+    '🔐 데이터는 암호화된 DB에 안전하게 보관됩니다'
+  ];
+  let idx=0;
+  setInterval(()=>{
+    const el=document.getElementById('sync-secure');
+    if(!el)return;
+    el.style.opacity='0';
+    setTimeout(()=>{idx=(idx+1)%msgs.length;el.textContent=msgs[idx];el.style.opacity='1';},350);
+  },5000);
+})();
+
+// ── INIT ──
+loadSettings();
+loadAll().then(()=>{initRealtime();});
+
+// iPhone 홈화면 PWA에서는 마이크 권한을 앱 시작 시 미리 요청하지 않음.
+// 실제 음성 입력 버튼을 눌렀을 때만 SpeechRecognition이 권한을 요청하도록 둔다.
+// (사전 getUserMedia 요청을 넣으면 iOS에서 권한 팝업이 불필요하게 한 번 더 뜰 수 있음)
+</script>
+</body>
+</html>
