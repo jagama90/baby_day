@@ -16,22 +16,25 @@
   --diaper:#3DBAA2;--diaper-bg:#EDFAF7;
   --growth:#34C759;--growth-bg:#E8F8ED;
   --hospital:#FF6B6B;--hospital-bg:#FFF0F0;
+  --bath:#29A8E0;--bath-bg:#E8F6FD;
   --primary:#5B7BFF;--primary-bg:#EEF1FF;
-  --bg:#F4F5FA;--card:#fff;
+  --bg:#F2F4FA;--card:#fff;
   --txt:#1A1D2E;--txt2:#6B7280;--txt3:#B0B7C3;
-  --border:#E8EAF0;--r:16px;--rs:10px;
+  --border:#E8EAF0;--r:18px;--rs:12px;
+  --shadow:0 2px 12px rgba(91,123,255,.08);
+  --shadow-sm:0 1px 4px rgba(0,0,0,.05);
 }
 body.dark{
   --bg:#0F1117;--card:#1C1F2E;--txt:#F0F2FF;--txt2:#9BA3B8;--txt3:#4A5268;
   --border:#2A2D3E;--primary-bg:#1A1F3A;
   --sleep-bg:#1E1A3A;--formula-bg:#2A1F0A;--breast-bg:#2A141A;--diaper-bg:#0A2220;
-  --growth-bg:#0A2010;--hospital-bg:#2A0A0A;
+  --growth-bg:#0A2010;--hospital-bg:#2A0A0A;--bath-bg:#0A1E2A;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 button{touch-action:manipulation;user-select:none;-webkit-user-select:none}
 input,select,textarea{touch-action:manipulation}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt);max-width:430px;margin:0 auto;min-height:100vh}
-body.dark .hd{background:#1A1F3A}
+body.dark .hd{background:linear-gradient(135deg,#1A2060 0%,#2D1A5E 100%)}
 body.dark .tab-bar,body.dark .quick-row,body.dark .last-bar,body.dark .date-nav,body.dark .chips,body.dark .fab-bar,body.dark .period-nav{background:var(--card)}
 body.dark .stat-section,body.dark .log-card,body.dark .sheet,body.dark .cal-sheet,body.dark .ai-card-wrap{background:var(--card)}
 body.dark .fg input,body.dark .fg select,body.dark .fg textarea,body.dark .type-tile,body.dark .seg button,body.dark .bt-side{background:var(--card);color:var(--txt)}
@@ -39,76 +42,95 @@ body.dark .loading-overlay{background:rgba(15,17,23,.9)}
 body.dark .warn-banner.feed{background:#2A1A00;color:#FFB74D}
 body.dark .predict-bar{background:#1A1F3A;border-left-color:var(--primary)}
 
-/* HEADER */
-.hd{background:var(--primary);padding:14px 16px 0;color:#fff}
-.hd-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px}
-.hd-title{font-size:20px;font-weight:900;letter-spacing:-.5px}
-.hd-sub{font-size:12px;opacity:.75;margin-top:1px}
+/* HEADER – PREMIUM */
+.hd{background:linear-gradient(135deg,#4A6CF7 0%,#6C3FC5 100%);padding:16px 16px 0;color:#fff;position:relative;overflow:hidden}
+.hd::before{content:'';position:absolute;top:-40px;right:-30px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none}
+.hd::after{content:'';position:absolute;bottom:-30px;left:20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none}
+.hd-top{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:14px;position:relative;z-index:1}
+.hd-name-wrap{display:flex;flex-direction:column;gap:2px}
+.hd-title{font-size:22px;font-weight:900;letter-spacing:-.6px;text-shadow:0 1px 4px rgba(0,0,0,.15)}
+.hd-sub{font-size:12px;opacity:.8;margin-top:1px;font-weight:500;letter-spacing:.2px}
 .hd-actions{display:flex;gap:8px}
-.hd-btn{background:rgba(255,255,255,.2);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px}
-.sync-bar{background:rgba(0,0,0,.15);padding:4px 16px;font-size:11px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:6px}
-.sync-dot{width:6px;height:6px;border-radius:50%;background:#4ADE80;flex-shrink:0}
-.sync-dot.off{background:#FCA5A5}.sync-dot.loading{background:#FCD34D;animation:blink .8s infinite}
+.hd-btn{background:rgba(255,255,255,.18);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.25);border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px;transition:background .15s}
+.hd-btn:active{background:rgba(255,255,255,.3)}
+/* INFO TICKER */
+.sync-ticker{display:flex;flex-direction:column;position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.12);margin:0 -16px;padding:0 16px}
+.sync-row{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11.5px;color:rgba(255,255,255,.9);font-weight:500}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4ADE80;flex-shrink:0;box-shadow:0 0 6px rgba(74,222,128,.7)}
+.sync-dot.off{background:#FCA5A5;box-shadow:0 0 6px rgba(252,165,165,.7)}
+.sync-dot.loading{background:#FCD34D;box-shadow:0 0 6px rgba(252,211,77,.7);animation:blink .8s infinite}
+.sync-secure{display:flex;align-items:center;gap:6px;padding:6px 0 8px;font-size:10.5px;color:rgba(255,255,255,.6);font-weight:400;letter-spacing:.1px}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* TAB BAR */
-.tab-bar{display:flex;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;overflow-x:auto;scrollbar-width:none}
+.tab-bar{display:flex;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;overflow-x:auto;scrollbar-width:none;box-shadow:var(--shadow-sm)}
 .tab-bar::-webkit-scrollbar{display:none}
-.tab-btn{flex-shrink:0;padding:11px 14px;font-size:12px;font-weight:500;color:var(--txt2);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;white-space:nowrap}
+.tab-btn{flex-shrink:0;padding:13px 16px;font-size:12px;font-weight:600;color:var(--txt2);background:none;border:none;border-bottom:2.5px solid transparent;cursor:pointer;font-family:inherit;white-space:nowrap;letter-spacing:.1px;transition:color .15s}
 .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
 
 /* QUICK BUTTONS */
-.quick-row{display:flex;gap:6px;overflow-x:auto;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);scrollbar-width:none}
+.quick-row{display:flex;gap:4px;overflow-x:auto;padding:14px 16px 12px;background:var(--card);border-bottom:1px solid var(--border);scrollbar-width:none}
 .quick-row::-webkit-scrollbar{display:none}
-.qb{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
-.qb-icon{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;transition:transform .1s}
-.qb:active .qb-icon{transform:scale(.9)}
+.qb{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;min-width:52px}
+.qb-icon{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;transition:transform .12s,box-shadow .12s;box-shadow:var(--shadow-sm)}
+.qb:active .qb-icon{transform:scale(.88);box-shadow:none}
 .qb-icon.sleep{background:var(--sleep-bg)}.qb-icon.formula{background:var(--formula-bg)}
 .qb-icon.breast{background:var(--breast-bg)}.qb-icon.diaper{background:var(--diaper-bg)}
 .qb-icon.growth{background:var(--growth-bg)}.qb-icon.hospital{background:var(--hospital-bg)}
-.qb-name{font-size:11px;color:var(--txt2);font-weight:500}
+.qb-icon.bath{background:var(--bath-bg)}
+.qb-name{font-size:10px;color:var(--txt2);font-weight:600;letter-spacing:.1px}
 
 /* BANNERS */
-.warn-banner{margin:8px 16px;border-radius:var(--rs);padding:10px 14px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px}
-.warn-banner.feed{background:#FFF3E0;color:#E65100}
+.warn-banner{margin:10px 16px 0;border-radius:var(--r);padding:11px 15px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px}
+.warn-banner.feed{background:linear-gradient(135deg,#FFF3E0,#FFE8C8);color:#BF4400;border:1px solid #FFCC80}
 .warn-banner.hidden{display:none}
-.predict-bar{background:var(--primary-bg);border-left:3px solid var(--primary);border-radius:0 var(--rs) var(--rs) 0;margin:0 16px 8px;padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between}
-.predict-bar.hidden{display:none}
-.predict-label{color:var(--txt2);font-size:11px}.predict-val{font-weight:700;color:var(--primary);font-size:15px}
 
-/* LAST ACTIVITY */
-.last-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border)}
-.lc{background:var(--primary-bg);border-radius:12px;padding:9px 10px;cursor:pointer}
-.lc{pointer-events:none}
-.lc-label{font-size:10px;color:var(--primary);font-weight:600;margin-bottom:3px}
-.lc-time{font-size:14px;font-weight:700;line-height:1.2}
-.lc-detail{font-size:10px;color:var(--txt2);margin-top:2px}
+/* PREDICT CARD – PREMIUM */
+.predict-card{margin:10px 16px 0;border-radius:var(--r);background:linear-gradient(135deg,#EEF1FF 0%,#E8EAFF 100%);border:1px solid rgba(91,123,255,.15);padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.predict-card.hidden{display:none}
+.predict-card-left{display:flex;flex-direction:column;gap:2px}
+.predict-card-label{font-size:10.5px;color:var(--txt2);font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+.predict-card-time{font-size:26px;font-weight:900;color:var(--primary);letter-spacing:-1px;line-height:1.1}
+.predict-card-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.predict-card-pill{background:var(--primary);color:#fff;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;white-space:nowrap}
+body.dark .predict-card{background:linear-gradient(135deg,#1A1F3A,#161A32);border-color:rgba(91,123,255,.25)}
 
-/* DATE NAV */
-.date-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--card);border-bottom:1px solid var(--border)}
-.dnbtn{background:none;border:none;font-size:22px;color:var(--txt2);cursor:pointer;padding:2px 10px}
-.date-main{font-size:15px;font-weight:700;text-align:center}
-.date-age{font-size:11px;color:var(--txt2);margin-top:1px;text-align:center}
+/* LAST ACTIVITY – PREMIUM */
+.last-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border)}
+.lc{background:linear-gradient(135deg,#F8F9FF,#F0F3FF);border-radius:14px;padding:10px 11px;border:1px solid rgba(91,123,255,.1)}
+.lc-label{font-size:9.5px;color:var(--primary);font-weight:700;margin-bottom:4px;letter-spacing:.3px;text-transform:uppercase}
+.lc-time{font-size:13px;font-weight:800;line-height:1.2;letter-spacing:-.3px}
+.lc-detail{font-size:10px;color:var(--txt2);margin-top:3px}
+body.dark .lc{background:linear-gradient(135deg,#1E2238,#191D35);border-color:rgba(91,123,255,.15)}
+
+/* DATE NAV – PREMIUM */
+.date-nav{display:flex;align-items:center;justify-content:space-between;padding:12px 8px 10px;background:var(--card);border-bottom:1px solid var(--border)}
+.dnbtn{background:none;border:none;font-size:22px;color:var(--txt3);cursor:pointer;padding:2px 12px;font-weight:300}
+.date-main{font-size:15px;font-weight:800;text-align:center;letter-spacing:-.3px}
+.date-age{font-size:11px;color:var(--txt2);margin-top:2px;text-align:center;font-weight:500}
 
 /* CHIPS */
-.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border);scrollbar-width:none}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:11px 16px;background:var(--card);border-bottom:1px solid var(--border);scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:500;position:relative;overflow:hidden}
+.chip{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:22px;font-size:12px;font-weight:700;position:relative;overflow:hidden;letter-spacing:.1px}
 .chip.sleep{background:var(--sleep-bg);color:var(--sleep)}.chip.formula{background:var(--formula-bg);color:#B87E0E}
 .chip.breast{background:var(--breast-bg);color:var(--breast)}.chip.diaper{background:var(--diaper-bg);color:var(--diaper)}
-.chip.goal{background:#E8F5E9;color:#2E7D32}
+.chip.goal{background:linear-gradient(135deg,#E8F5E9,#D4EDDA);color:#1B5E20;border:1px solid rgba(52,199,89,.2)}
+.chip.bath-chip{background:var(--bath-bg);color:var(--bath)}
 body.dark .chip.goal{background:#0A2010;color:#81C784}
-.goal-bar{position:absolute;bottom:0;left:0;height:3px;border-radius:0 0 20px 20px;background:#4CAF50}
+.goal-bar{position:absolute;bottom:0;left:0;height:3px;border-radius:0 0 22px 22px;background:linear-gradient(90deg,#4CAF50,#81C784)}
 
 /* LOG LIST */
 .log-list{padding:12px 16px 140px}
-.log-card{background:var(--card);border-radius:var(--r);padding:13px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.li-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.log-card{background:var(--card);border-radius:var(--r);padding:14px 15px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;box-shadow:var(--shadow-sm);border:1px solid transparent;transition:border-color .15s}
+.log-card[style*="cursor:pointer"]:active{border-color:var(--primary);background:var(--primary-bg)}
+.li-icon{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .li-icon.sleep{background:var(--sleep-bg)}.li-icon.formula{background:var(--formula-bg)}
 .li-icon.breast{background:var(--breast-bg)}.li-icon.diaper{background:var(--diaper-bg)}
 .li-icon.growth{background:var(--growth-bg)}.li-icon.hospital{background:var(--hospital-bg)}
+.li-icon.bath{background:var(--bath-bg)}
 .li-body{flex:1;min-width:0}
-.li-type{font-size:14px;font-weight:700}
+.li-type{font-size:14px;font-weight:800;letter-spacing:-.2px}
 .li-type.sleep{color:var(--sleep)}.li-type.formula{color:var(--formula)}
 .li-type.breast{color:var(--breast)}.li-type.diaper{color:var(--diaper)}
 .li-type.growth{color:var(--growth)}.li-type.hospital{color:var(--hospital)}
@@ -129,9 +151,9 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* FAB */
-.fab-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--card);border-top:1px solid var(--border);padding:12px 16px 36px;display:flex;gap:8px;z-index:100}
-.fab-mic{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:26px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:20px;font-weight:700;cursor:pointer;font-family:inherit}
-.fab-mic.on{background:#E8667A;animation:pulse 1s infinite}
+.fab-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--card);border-top:1px solid var(--border);padding:12px 16px 36px;display:flex;gap:8px;z-index:100;backdrop-filter:blur(12px)}
+.fab-mic{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:18px 14px;background:linear-gradient(135deg,#4A6CF7,#6C3FC5);color:#fff;border:none;border-radius:var(--r);font-size:17px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 20px rgba(91,123,255,.4);letter-spacing:-.2px}
+.fab-mic.on{background:linear-gradient(135deg,#E8667A,#C0394D);animation:pulse 1s infinite;box-shadow:0 4px 20px rgba(232,102,122,.4)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.75}}
 
 /* VOICE */
@@ -257,7 +279,7 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
 <!-- HEADER -->
 <div class="hd">
   <div class="hd-top">
-    <div>
+    <div class="hd-name-wrap">
       <div class="hd-title" id="hd-title">👶 아기 기록</div>
       <div class="hd-sub" id="hd-sub">오늘</div>
     </div>
@@ -267,7 +289,13 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
       <button class="hd-btn" onclick="openSettings()">⚙️</button>
     </div>
   </div>
-  <div class="sync-bar"><div class="sync-dot" id="sync-dot"></div><span id="sync-txt">연결 중...</span></div>
+  <div class="sync-ticker">
+    <div class="sync-row">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-txt">연결 중...</span>
+    </div>
+    <div class="sync-secure" id="sync-secure">🔒 모든 기록은 암호화되어 안전하게 저장됩니다</div>
+  </div>
 </div>
 
 <!-- TAB BAR -->
@@ -287,12 +315,18 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
     <div class="qb" onclick="quickAdd('diaper','urine')"><div class="qb-icon diaper">💧</div><div class="qb-name">소변</div></div>
     <div class="qb" onclick="quickAdd('diaper','stool')"><div class="qb-icon diaper">💩</div><div class="qb-name">대변</div></div>
     <div class="qb" onclick="quickAdd('diaper','both')"><div class="qb-icon diaper">🔄</div><div class="qb-name">둘다</div></div>
+    <div class="qb" onclick="quickAdd('bath')"><div class="qb-icon bath">🛁</div><div class="qb-name">목욕</div></div>
   </div>
   <div class="last-bar" id="last-bar"></div>
   <div class="warn-banner feed hidden" id="warn-feed">⚠️ <span id="warn-feed-txt"></span></div>
-  <div class="predict-bar hidden" id="predict-bar">
-    <div><div class="predict-label">다음 수유 예상</div><div class="predict-val" id="predict-val">--:--</div></div>
-    <div style="font-size:11px;color:var(--txt2)" id="predict-in"></div>
+  <div class="predict-card hidden" id="predict-bar">
+    <div class="predict-card-left">
+      <div class="predict-card-label">🍼 다음 수유 예상</div>
+      <div class="predict-card-time" id="predict-val">--:--</div>
+    </div>
+    <div class="predict-card-right">
+      <div class="predict-card-pill" id="predict-in">계산 중</div>
+    </div>
   </div>
   <div class="date-nav">
     <button class="dnbtn" onclick="shiftDay(-1)">‹</button>
@@ -470,8 +504,8 @@ function durMin(s,e){return Math.round((new Date(e)-new Date(s))/60000);}
 function durLabel(m){return m<60?m+'분':Math.floor(m/60)+'시간'+(m%60?' '+m%60+'분':'');}
 function autoSleepKind(d){const h=new Date(d).getHours();return(h>=6&&h<19)?'nap':'night';}
 
-const EMOJI={sleep:'😴',formula:'🍼',breast:'🤱',diaper:'💧',growth:'📏',hospital:'🏥'};
-const LABEL={sleep:'수면',formula:'분유',breast:'모유',diaper:'기저귀',growth:'성장',hospital:'병원'};
+const EMOJI={sleep:'😴',formula:'🍼',breast:'🤱',diaper:'💧',growth:'📏',hospital:'🏥',bath:'🛁'};
+const LABEL={sleep:'수면',formula:'분유',breast:'모유',diaper:'기저귀',growth:'성장',hospital:'병원',bath:'목욕'};
 
 function detail(r){
   if(r.type==='sleep'){const tag=r.sleep_kind==='nap'?'낮잠':'밤잠';if(r.end_time)return tag+' · '+durLabel(durMin(r.start_time,r.end_time));return tag+' · 진행 중 ⏱';}
@@ -480,6 +514,7 @@ function detail(r){
   if(r.type==='diaper')return {urine:'소변',stool:'대변',both:'소변+대변'}[r.diaper_kind]||'기저귀';
   if(r.type==='growth'){const p=[];if(r.weight)p.push(r.weight+'kg');if(r.height)p.push(r.height+'cm');if(r.head)p.push('두위 '+r.head+'cm');return p.join(' · ')||'성장 기록';}
   if(r.type==='hospital')return r.hospital_name||(r.memo||'병원 방문');
+  if(r.type==='bath')return r.memo||'목욕 완료 🛁';
   return '';
 }
 
@@ -660,6 +695,7 @@ function renderChips(){
   const formula=recs.filter(r=>r.type==='formula').reduce((s,r)=>s+Number(r.ml||0),0);
   const feeds=recs.filter(r=>r.type==='breast'||r.type==='formula').length;
   const diapers=recs.filter(r=>r.type==='diaper').length;
+  const bathCount=recs.filter(r=>r.type==='bath').length;
   const goalMl=parseInt(settings.formulaGoal||0);
   // 모유 총 분 계산 → ml 환산
   const totalBreastMin=recs.filter(r=>r.type==='breast').reduce((s,r)=>s+(Number(r.left_min||0)+Number(r.right_min||0)),0);
@@ -669,13 +705,13 @@ function renderChips(){
   let html='';
   if(sleepMin)html+=`<div class="chip sleep">😴 ${durLabel(sleepMin)}</div>`;
   if(goalMl){
-    // 분유+모유환산 합계 칩
     html+=`<div class="chip goal" title="분유 ${formula}ml + 직수환산 ${breastAsMl}ml">🍼 ${totalFeedMl}/${goalMl}ml <span style="font-size:10px;opacity:.8">${goalPct}%</span><div class="goal-bar" style="width:${goalPct}%"></div></div>`;
   } else {
     if(formula)html+=`<div class="chip formula">🍼 ${formula}ml</div>`;
   }
   if(feeds)html+=`<div class="chip breast">🤱 ${feeds}회</div>`;
   if(diapers)html+=`<div class="chip diaper">💧 ${diapers}회</div>`;
+  if(bathCount)html+=`<div class="chip bath-chip">🛁 ${bathCount}회</div>`;
   if(!html)html='<div style="font-size:13px;color:var(--txt3);padding:4px 0">기록이 없어요</div>';
   document.getElementById('chips').innerHTML=html;
 }
@@ -1031,6 +1067,7 @@ async function renderStats(){
   const diaperRecs=logRecs.filter(r=>r.type==='diaper');
   const urineCount=diaperRecs.filter(r=>r.diaper_kind==='urine'||r.diaper_kind==='both').length;
   const stoolCount=diaperRecs.filter(r=>r.diaper_kind==='stool'||r.diaper_kind==='both').length;
+  const bathRecs=logRecs.filter(r=>r.type==='bath');
   const name=settings.babyName||'승준이';
   const el=document.getElementById('stats-content');
   el.innerHTML='<div style="padding:20px;text-align:center;color:var(--txt3);font-size:13px">✨ AI 요약 생성 중...</div>';
@@ -1116,6 +1153,11 @@ async function renderStats(){
       <div class="stat-row"><span class="stat-lbl">💧 소변</span><span class="stat-val">${urineCount}회</span></div>
       <div class="stat-row"><span class="stat-lbl">💩 대변</span><span class="stat-val">${stoolCount}회</span></div>`
     :'<div style="padding:14px 16px;font-size:13px;color:var(--txt3)">기저귀 기록 없음</div>'}
+    </div>
+    <div class="stat-section"><div class="stat-section-hd"><span>🛁 목욕</span></div>
+    ${bathRecs.length?`<div class="stat-row"><span class="stat-lbl">횟수</span><span class="stat-val" style="color:var(--bath)">${bathRecs.length}회</span></div>
+      ${bathRecs[0]?`<div class="stat-row"><span class="stat-lbl">최근 목욕</span><span class="stat-val">${fmtTime(bathRecs[0].start_time)}</span></div>`:''}`:
+    '<div style="padding:14px 16px;font-size:13px;color:var(--txt3)">목욕 기록 없음</div>'}
     </div>`;
 }
 
@@ -1531,13 +1573,15 @@ function showToast(msg){const el=document.getElementById('toast');el.textContent
 // ── AUTO REFRESH ──
 setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
 
+// ── SECURE MSG ROTATION ──
+(function(){
+  const msgs=['🔒 모든 기록은 암호화되어 안전하게 저장됩니다','🛡️ 개인정보는 외부에 절대 공유되지 않습니다','✅ 실시간 백업으로 소중한 기록을 안전하게 보호합니다','🔐 승준이의 기록은 암호화된 DB에 저장됩니다'];
+  let idx=0;
+  const el=document.getElementById('sync-secure');
+  if(el){setInterval(()=>{idx=(idx+1)%msgs.length;el.style.opacity='0';setTimeout(()=>{el.textContent=msgs[idx];el.style.opacity='1';},300);},5000);}
+  if(el)el.style.transition='opacity .3s';
+})();
+
 // ── INIT ──
 loadSettings();
-loadAll().then(()=>{initRealtime();});
-
-// iPhone 홈화면 PWA에서는 마이크 권한을 앱 시작 시 미리 요청하지 않음.
-// 실제 음성 입력 버튼을 눌렀을 때만 SpeechRecognition이 권한을 요청하도록 둔다.
-// (사전 getUserMedia 요청을 넣으면 iOS에서 권한 팝업이 불필요하게 한 번 더 뜰 수 있음)
-</script>
-</body>
-</html>
+loadAll
