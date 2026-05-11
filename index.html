@@ -79,7 +79,7 @@ body.dark .predict-bar{background:#1A1F3A;border-left-color:var(--primary)}
 /* LAST ACTIVITY */
 .last-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border)}
 .lc{background:var(--primary-bg);border-radius:12px;padding:9px 10px;cursor:pointer}
-.lc:active{background:#dde4ff}
+.lc{pointer-events:none}
 .lc-label{font-size:10px;color:var(--primary);font-weight:600;margin-bottom:3px}
 .lc-time{font-size:14px;font-weight:700;line-height:1.2}
 .lc-detail{font-size:10px;color:var(--txt2);margin-top:2px}
@@ -194,8 +194,6 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
 /* TOAST */
 .toast{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(26,29,46,.9);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
-.toast.success{background:#10B981}
-.toast.error{background:#EF4444}
 
 /* PAGES */
 .page{display:none;padding-bottom:140px}.page.show{display:block}
@@ -385,9 +383,23 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
       <input class="s-input" type="date" id="s-birth" oninput="saveSetting('babyBirth',this.value);renderHeader()">
     </div>
     <div class="settings-row">
-      <div><div class="settings-lbl">🍼 하루 분유 목표</div><div class="settings-sub">달성률을 칩에 표시</div></div>
+      <div><div class="settings-lbl">🍼 하루 수유 목표</div><div class="settings-sub">분유 + 모유 환산 합계</div></div>
       <div style="display:flex;align-items:center;gap:4px">
         <input class="s-input-sm" type="number" id="s-goal" placeholder="800" min="0" max="2000" oninput="saveSetting('formulaGoal',this.value);renderChips()">
+        <span style="font-size:12px;color:var(--txt2)">ml</span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-lbl">⚖️ 현재 몸무게</div><div class="settings-sub">모유 환산에 사용</div></div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <input class="s-input-sm" type="number" id="s-weight" placeholder="5.5" step="0.1" min="0" max="30" oninput="saveSetting('babyWeight',this.value)">
+        <span style="font-size:12px;color:var(--txt2)">kg</span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-lbl">🍼 평소 1회 분유량</div><div class="settings-sub">모유 후 보충량 계산용</div></div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <input class="s-input-sm" type="number" id="s-avg-formula" placeholder="120" min="0" max="300" oninput="saveSetting('avgFormulaMl',this.value)">
         <span style="font-size:12px;color:var(--txt2)">ml</span>
       </div>
     </div>
@@ -409,7 +421,7 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
       </label>
     </div>
     <div class="settings-row">
-      <div><div class="settings-lbl">📋 오늘 기록 복사</div><div class="settings-sub">오늘 기록을 클립보드에 복사</div></div>
+      <div><div class="settings-lbl">🔗 공유 링크</div><div class="settings-sub">읽기 전용 오늘 기록 공유</div></div>
       <button onclick="copyShareLink()" style="padding:8px 14px;background:var(--primary-bg);color:var(--primary);border-radius:var(--rs);font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:inherit">복사</button>
     </div>
     <div class="settings-row">
@@ -438,7 +450,6 @@ let statsPeriod='day', statsOffset=0;
 let currentTab='home';
 let settings={};
 let sleepTimerInterval=null;
-let lastFeedAlertId='';
 
 // ── HELPERS ──
 const pad=n=>String(n).padStart(2,'0');
@@ -466,7 +477,7 @@ function detail(r){
 
 // ── SETTINGS ──
 function loadSettings(){
-  ['babyName','babyBirth','formulaGoal','feedWarnHour','darkMode','pushEnabled'].forEach(k=>{settings[k]=localStorage.getItem(k)||'';});
+  ['babyName','babyBirth','formulaGoal','feedWarnHour','darkMode','pushEnabled','babyWeight','avgFormulaMl'].forEach(k=>{settings[k]=localStorage.getItem(k)||'';});
   if(settings.darkMode==='1')document.body.classList.add('dark');
   document.getElementById('toggle-dark').className='toggle'+(settings.darkMode==='1'?' on':'');
   document.getElementById('toggle-push').className='toggle'+(settings.pushEnabled==='1'?' on':'');
@@ -476,6 +487,8 @@ function syncSettingsUI(){
   document.getElementById('s-birth').value=settings.babyBirth||'';
   document.getElementById('s-goal').value=settings.formulaGoal||'';
   document.getElementById('s-warn').value=settings.feedWarnHour||'3';
+  document.getElementById('s-weight').value=settings.babyWeight||'';
+  document.getElementById('s-avg-formula').value=settings.avgFormulaMl||'';
   document.getElementById('toggle-dark').className='toggle'+(settings.darkMode==='1'?' on':'');
   document.getElementById('toggle-push').className='toggle'+(settings.pushEnabled==='1'?' on':'');
 }
@@ -486,22 +499,11 @@ function toggleDark(){const on=document.body.classList.toggle('dark');saveSettin
 
 // ── PUSH NOTIFICATIONS ──
 async function togglePush(){
-  if(settings.pushEnabled==='1'){
-    saveSetting('pushEnabled','0');
-    lastFeedAlertId='';
-    document.getElementById('toggle-push').className='toggle';
-    showToast('알림 꺼짐');
-    return;
-  }
-  if(!('Notification' in window)){showToast('이 브라우저는 알림을 지원하지 않아요','error');return;}
+  if(settings.pushEnabled==='1'){saveSetting('pushEnabled','0');document.getElementById('toggle-push').className='toggle';showToast('알림 꺼짐');return;}
+  if(!('Notification' in window)){showToast('이 브라우저는 알림을 지원하지 않아요');return;}
   const perm=await Notification.requestPermission();
-  if(perm==='granted'){
-    saveSetting('pushEnabled','1');
-    lastFeedAlertId='';
-    document.getElementById('toggle-push').className='toggle on';
-    showToast('🔔 알림 켜짐!','success');
-  }
-  else showToast('알림 권한이 거부됐어요','error');
+  if(perm==='granted'){saveSetting('pushEnabled','1');document.getElementById('toggle-push').className='toggle on';showToast('🔔 알림 켜짐!');}
+  else showToast('알림 권한이 거부됐어요');
 }
 function sendPushIfNeeded(msg){
   if(settings.pushEnabled==='1'&&Notification.permission==='granted') new Notification('👶 아기 기록',{body:msg,icon:'https://cdn.jsdelivr.net/npm/emoji-datasource-apple@15.0.1/img/apple/64/1f476.png'});
@@ -510,14 +512,7 @@ function checkPushAlerts(){
   if(settings.pushEnabled!=='1') return;
   const wh=parseInt(settings.feedWarnHour||3);
   const last=[...records].filter(r=>r.type==='formula'||r.type==='breast').sort((a,b)=>b.start_time>a.start_time?1:-1)[0];
-
-  if(last){
-    const h=(Date.now()-new Date(last.start_time))/3600000;
-    if(h>=wh && lastFeedAlertId!==last.id){
-      sendPushIfNeeded(`마지막 수유 ${Math.floor(h)}시간 ${Math.floor((h%1)*60)}분 경과`);
-      lastFeedAlertId=last.id;
-    }
-  }
+  if(last){const h=(Date.now()-new Date(last.start_time))/3600000;if(h>=wh)sendPushIfNeeded(`마지막 수유 ${Math.floor(h)}시간 ${Math.floor((h%1)*60)}분 경과`);}
 }
 
 // ── SHARE LINK ──
@@ -565,7 +560,7 @@ function importCSV(input){
 async function loadAll(){
   setSyncState('loading','불러오는 중...');
   try{
-    records=await apiGet('baby_logs?order=start_time.desc&limit=5000');
+    records=await apiGet('baby_logs?order=start_time.desc&limit=1000');
     setSyncState('on','실시간 동기화 중');
     render();
   }catch(e){setSyncState('off','연결 실패');showToast('로드 실패: '+e.message);}
@@ -603,10 +598,10 @@ function renderLastBar(){
   const labels={diaper:'마지막 기저귀',formula:'마지막 분유',breast:'마지막 모유'};
   document.getElementById('last-bar').innerHTML=types.map(t=>{
     const r=[...records].filter(x=>x.type===t).sort((a,b)=>b.start_time>a.start_time?1:-1)[0];
-    return `<div class="lc" onclick="${t==='formula'?"openModal({type:'formula'})":(t==='breast'?"openModal({type:'breast'})":`quickAdd('${t}')`)}">
+    return `<div class="lc" style="cursor:default">
       <div class="lc-label">${labels[t]}</div>
       ${r?`<div class="lc-time">${elapsed(r.start_time)}</div><div class="lc-detail">${detail(r)}</div>`
-         :`<div class="lc-time" style="font-size:12px;color:var(--txt2)">기록 없음</div><div class="lc-detail">탭하여 추가</div>`}
+         :`<div class="lc-time" style="font-size:12px;color:var(--txt2)">기록 없음</div><div class="lc-detail">-</div>`}
     </div>`;
   }).join('');
 }
@@ -621,42 +616,10 @@ function renderWarnings(){
   else we.classList.add('hidden');
   // 예측
   const pe=document.getElementById('predict-bar'),pv=document.getElementById('predict-val'),pi=document.getElementById('predict-in');
-
-  // 30분 이내에 이어진 모유/분유 기록은 같은 수유 세션으로 묶음
-  const orderedFeeds=[...feeds].sort((a,b)=>new Date(a.start_time)-new Date(b.start_time));
-  const sessions=[];
-  const SESSION_GAP=30*60*1000;
-
-  orderedFeeds.forEach(feed=>{
-    const t=new Date(feed.start_time).getTime();
-    const prev=sessions[sessions.length-1];
-
-    if(!prev || t-prev.lastTime>SESSION_GAP){
-      sessions.push({startTime:t,lastTime:t});
-    }else{
-      prev.lastTime=t;
-    }
-  });
-
-  if(sessions.length>=3){
-    const recentSessions=sessions.slice(-6); // 최근 최대 6개 세션 → 간격 최대 5개
+  if(feeds.length>=3){
     const ivs=[];
-
-    for(let i=recentSessions.length-1;i>0;i--){
-      const d=recentSessions[i].startTime-recentSessions[i-1].startTime;
-      if(d>0&&d<8*3600000)ivs.push(d);
-    }
-
-    if(ivs.length>=2){
-      const avg=ivs.reduce((a,b)=>a+b,0)/ivs.length;
-      const latestSession=sessions[sessions.length-1];
-      const next=new Date(latestSession.startTime+avg);
-      const ml=Math.round((next-Date.now())/60000);
-
-      pv.textContent=pad(next.getHours())+':'+pad(next.getMinutes());
-      pi.textContent=ml>0?ml+'분 후':'지금쯤이에요!';
-      pe.classList.remove('hidden');
-    }else pe.classList.add('hidden');
+    for(let i=0;i<Math.min(feeds.length-1,5);i++){const d=new Date(feeds[i].start_time)-new Date(feeds[i+1].start_time);if(d>0&&d<8*3600000)ivs.push(d);}
+    if(ivs.length>=2){const avg=ivs.reduce((a,b)=>a+b,0)/ivs.length;const next=new Date(new Date(last.start_time).getTime()+avg);const ml=Math.round((next-Date.now())/60000);pv.textContent=pad(next.getHours())+':'+pad(next.getMinutes());pi.textContent=ml>0?ml+'분 후':'지금쯤이에요!';pe.classList.remove('hidden');}else pe.classList.add('hidden');
   }else pe.classList.add('hidden');
 }
 
@@ -672,10 +635,19 @@ function renderChips(){
   const feeds=recs.filter(r=>r.type==='breast'||r.type==='formula').length;
   const diapers=recs.filter(r=>r.type==='diaper').length;
   const goalMl=parseInt(settings.formulaGoal||0);
-  const goalPct=goalMl?Math.min(100,Math.round(formula/goalMl*100)):0;
+  // 모유 총 분 계산 → ml 환산
+  const totalBreastMin=recs.filter(r=>r.type==='breast').reduce((s,r)=>s+(Number(r.left_min||0)+Number(r.right_min||0)),0);
+  const breastAsMl=breastToFormulaMl(totalBreastMin);
+  const totalFeedMl=formula+breastAsMl;
+  const goalPct=goalMl?Math.min(100,Math.round(totalFeedMl/goalMl*100)):0;
   let html='';
   if(sleepMin)html+=`<div class="chip sleep">😴 ${durLabel(sleepMin)}</div>`;
-  if(formula){if(goalMl)html+=`<div class="chip goal">🍼 ${formula}/${goalMl}ml <span style="font-size:10px;opacity:.8">${goalPct}%</span><div class="goal-bar" style="width:${goalPct}%"></div></div>`;else html+=`<div class="chip formula">🍼 ${formula}ml</div>`;}
+  if(goalMl){
+    // 분유+모유환산 합계 칩
+    html+=`<div class="chip goal" title="분유 ${formula}ml + 직수환산 ${breastAsMl}ml">🍼 ${totalFeedMl}/${goalMl}ml <span style="font-size:10px;opacity:.8">${goalPct}%</span><div class="goal-bar" style="width:${goalPct}%"></div></div>`;
+  } else {
+    if(formula)html+=`<div class="chip formula">🍼 ${formula}ml</div>`;
+  }
   if(feeds)html+=`<div class="chip breast">🤱 ${feeds}회</div>`;
   if(diapers)html+=`<div class="chip diaper">💧 ${diapers}회</div>`;
   if(!html)html='<div style="font-size:13px;color:var(--txt3);padding:4px 0">기록이 없어요</div>';
@@ -688,18 +660,19 @@ function renderLogs(){
   const el=document.getElementById('log-list');
   if(!recs.length){el.innerHTML=`<div class="empty"><div class="empty-e">📋</div><div>이 날의 기록이 없어요</div></div>`;return;}
   el.innerHTML=recs.map(r=>`
-    <div class="log-card">
+    <div class="log-card" ${r.type==='breast'?`onclick="openEditBreast('${r.id}')" style="cursor:pointer"`:''}> 
       <div class="li-icon ${r.type}">${EMOJI[r.type]}</div>
       <div class="li-body">
         <div class="li-type ${r.type}">${LABEL[r.type]}${r.sleep_kind?' · '+(r.sleep_kind==='nap'?'낮잠':'밤잠'):''}</div>
         <div class="li-detail">${detail(r)}</div>
         ${r.type==='sleep'&&!r.end_time?`<div class="sleep-timer" id="sleep-timer-${r.id}">⏱ 진행 중...</div>`:''}
         ${r.memo?`<div class="memo-text">📝 ${r.memo}</div>`:''}
+        ${r.type==='breast'?`<div style="font-size:10px;color:var(--txt3);margin-top:2px">탭하여 수정</div>`:''}
       </div>
       <div class="li-right">
         <div style="display:flex;align-items:center;gap:2px">
           <span class="li-time">${fmtTime(r.start_time)}</span>
-          <button class="del-btn" onclick="delRec('${r.id}')">×</button>
+          <button class="del-btn" onclick="event.stopPropagation();delRec('${r.id}')">×</button>
         </div>
         ${r.end_time?`<div class="li-end">~ ${fmtTime(r.end_time)}</div>`:''}
       </div>
@@ -1028,11 +1001,17 @@ async function renderStats(){
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-top:3px"><span>낮잠 ${totalSleep?Math.round(napMin/totalSleep*100):0}%</span><span>밤잠 ${totalSleep?Math.round(nightMin/totalSleep*100):0}%</span></div>
       </div>`:'<div style="padding:14px 16px;font-size:13px;color:var(--txt3)">수면 기록 없음</div>'}
     </div>
-    <div class="stat-section"><div class="stat-section-hd"><span>🍼 분유</span></div>
-    ${formulaRecs.length?`<div class="stat-row"><span class="stat-lbl">총 섭취량</span><span class="stat-val" style="color:var(--formula)">${totalFormula}ml</span></div>
-      <div class="stat-row"><span class="stat-lbl">횟수</span><span class="stat-val">${formulaRecs.length}회</span></div>
-      <div class="stat-row"><span class="stat-lbl">회당 평균</span><span class="stat-val">${avgFormula}ml</span></div>`
-    :'<div style="padding:14px 16px;font-size:13px;color:var(--txt3)">분유 기록 없음</div>'}
+    <div class="stat-section"><div class="stat-section-hd"><span>🍼 분유 + 직수 수유량</span></div>
+    ${(formulaRecs.length||breastRecs.length)?`
+      <div class="stat-row"><span class="stat-lbl">🍼 분유</span><span class="stat-val" style="color:var(--formula)">${totalFormula}ml · ${formulaRecs.length}회</span></div>
+      <div class="stat-row"><span class="stat-lbl">🤱 직수 환산</span><span class="stat-val" style="color:var(--breast)">${breastToFormulaMl(totalBreastMin)}ml · ${breastRecs.length}회</span></div>
+      <div class="stat-row"><span class="stat-lbl">합계</span><span class="stat-val" style="color:var(--primary);font-weight:700">${totalFormula+breastToFormulaMl(totalBreastMin)}ml${parseInt(settings.formulaGoal||0)?' / '+settings.formulaGoal+'ml':''}</span></div>
+      ${avgFormula?`<div class="stat-row"><span class="stat-lbl">분유 회당 평균</span><span class="stat-val">${avgFormula}ml</span></div>`:''}
+      <div style="padding:10px 16px 14px;font-size:11px;color:var(--txt3);line-height:1.6;border-top:.5px solid var(--border)">
+        ⚠️ 이 계산은 의학적 진단이 아닌 수유량 추정 도구입니다.<br>
+        아기의 배고픔 신호, 소변 기저귀 수, 체중 증가가 더 중요합니다.
+      </div>`
+    :'<div style="padding:14px 16px;font-size:13px;color:var(--txt3)">수유 기록 없음</div>'}
     </div>
     <div class="stat-section"><div class="stat-section-hd"><span>🤱 모유</span></div>
     ${breastRecs.length?`<div class="stat-row"><span class="stat-lbl">총 수유 시간</span><span class="stat-val" style="color:var(--breast)">${durLabel(totalBreastMin)}</span></div>
@@ -1114,7 +1093,18 @@ async function handleVoice(txt){
     if(ongoing){await apiPatch(ongoing.id,{end_time:iso});showToast('수면 종료 · '+durLabel(durMin(ongoing.start_time,iso)));await loadAll();}
     else showToast('진행 중인 수면이 없어요');return;
   }
-  if(/수면|잠|낮잠|밤잠/.test(t)){const sk=/밤잠/.test(t)?'night':autoSleepKind(now);await apiPost({type:'sleep',date:ds,start_time:iso,sleep_kind:sk});showToast('😴 '+(sk==='nap'?'낮잠':'밤잠')+' 시작');await loadAll();return;}
+  if(/수면|잠|낮잠|밤잠/.test(t)){
+    const sk=/밤잠/.test(t)?'night':autoSleepKind(now);
+    // 진행 중인 수면이 있으면 먼저 종료 후 새로 시작 (중복 방지)
+    const ongoingSleep=records.find(r=>r.type==='sleep'&&!r.end_time);
+    if(ongoingSleep){
+      await apiPatch(ongoingSleep.id,{end_time:iso});
+      showToast('기존 수면 종료 → 새 수면 시작');
+    }
+    await apiPost({type:'sleep',date:ds,start_time:iso,sleep_kind:sk});
+    if(!ongoingSleep)showToast('😴 '+(sk==='nap'?'낮잠':'밤잠')+' 시작');
+    await loadAll();return;
+  }
   if(/기저귀|소변|대변/.test(t)){const kind=/대변/.test(t)&&/소변/.test(t)?'both':/대변/.test(t)?'stool':'urine';await apiPost({type:'diaper',date:ds,start_time:iso,diaper_kind:kind});showToast('💧 '+{urine:'소변',stool:'대변',both:'소변+대변'}[kind]+' 기록됨');await loadAll();return;}
   if(/분유/.test(t)){const m=t.match(/(\d+)/);const ml=m?parseInt(m[1]):0;await apiPost({type:'formula',date:ds,start_time:iso,ml});showToast('🍼 분유 '+ml+'ml 기록됨');await loadAll();return;}
   if(/모유|수유/.test(t)){
@@ -1128,16 +1118,81 @@ async function handleVoice(txt){
   showToast('"'+txt+'" — 인식 실패');
 }
 
-// ── TOAST ──
-function showToast(msg,type='default'){
-  const el=document.getElementById('toast');
-  el.textContent=msg;
-  el.className='toast'+(type==='success'?' success':type==='error'?' error':'');
-  el.classList.add('show');
 
-  clearTimeout(showToast._timer);
-  showToast._timer=setTimeout(()=>el.classList.remove('show'),2500);
+
+// ── 모유→분유 환산 ──
+function breastToFormulaMl(totalBreastMin){
+  // 1분 직수 ≈ 평균 7~8ml 섭취 (연구 기반 추정치)
+  const mlPerMin = 7.5;
+  const rawMl = totalBreastMin * mlPerMin;
+  // 일령별 보정계수
+  let factor = 0.85; // 디폴트 31~120일
+  if(settings.babyBirth){
+    const days=Math.floor((new Date()-new Date(settings.babyBirth))/86400000);
+    if(days<=14) factor=0.95;
+    else if(days<=30) factor=0.90;
+    else if(days<=120) factor=0.85;
+    else factor=0.80;
+  }
+  return Math.round(rawMl * factor);
 }
+
+// ── BREAST EDIT MODAL ──
+function openEditBreast(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  leftMin=Number(r.left_min||0);rightMin=Number(r.right_min||0);
+  const html=`<div style="padding:20px 16px 32px">
+    <div class="drag-bar" style="margin-bottom:16px"></div>
+    <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:16px">🤱 모유 수정</div>
+    <div class="breast-box">
+      <div style="font-size:12px;color:var(--breast);font-weight:700;margin-bottom:8px">수유 시간 (분)</div>
+      <div class="bt-row">
+        <div class="bt-side"><div class="bt-side-name">왼쪽</div>
+          <div class="bt-side-val" id="eb-left">${leftMin}</div>
+          <div class="bt-btns">
+            <button onclick="adjEB('left',-1)">−</button>
+            <button onclick="adjEB('left',1)">＋</button>
+          </div>
+        </div>
+        <div class="bt-side"><div class="bt-side-name">오른쪽</div>
+          <div class="bt-side-val" id="eb-right">${rightMin}</div>
+          <div class="bt-btns">
+            <button onclick="adjEB('right',-1)">−</button>
+            <button onclick="adjEB('right',1)">＋</button>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:8px;font-size:13px;color:var(--breast);font-weight:600">총 <span id="eb-total">${leftMin+rightMin}</span>분</div>
+    </div>
+    <div class="row2" style="margin-bottom:16px">
+      <div class="fg"><label>왼쪽 직접 입력(분)</label><input type="number" id="eb-l-input" min="0" max="60" value="${leftMin}" oninput="syncEB('left',this.value)"></div>
+      <div class="fg"><label>오른쪽 직접 입력(분)</label><input type="number" id="eb-r-input" min="0" max="60" value="${rightMin}" oninput="syncEB('right',this.value)"></div>
+    </div>
+    <button class="save-btn" onclick="saveEditBreast('${id}')">저장</button>
+    <button class="cancel-btn" onclick="closeEditBreast()">취소</button>
+  </div>`;
+  let overlay=document.getElementById('edit-breast-overlay');
+  if(!overlay){overlay=document.createElement('div');overlay.id='edit-breast-overlay';overlay.className='overlay';overlay.innerHTML='<div class="sheet" style="padding:0">'+html+'</div>';document.body.appendChild(overlay);}
+  else overlay.querySelector('.sheet').innerHTML=html;
+  overlay.classList.remove('hidden');
+}
+function closeEditBreast(){const o=document.getElementById('edit-breast-overlay');if(o)o.classList.add('hidden');}
+function adjEB(side,d){
+  if(side==='left'){leftMin=Math.max(0,leftMin+d);const e=document.getElementById('eb-left');if(e)e.textContent=leftMin;const f=document.getElementById('eb-l-input');if(f)f.value=leftMin;}
+  else{rightMin=Math.max(0,rightMin+d);const e=document.getElementById('eb-right');if(e)e.textContent=rightMin;const f=document.getElementById('eb-r-input');if(f)f.value=rightMin;}
+  const t=document.getElementById('eb-total');if(t)t.textContent=leftMin+rightMin;
+}
+function syncEB(side,v){const n=Math.max(0,parseInt(v)||0);if(side==='left'){leftMin=n;const e=document.getElementById('eb-left');if(e)e.textContent=n;}else{rightMin=n;const e=document.getElementById('eb-right');if(e)e.textContent=n;}const t=document.getElementById('eb-total');if(t)t.textContent=leftMin+rightMin;}
+async function saveEditBreast(id){
+  try{
+    await apiPatch(id,{left_min:leftMin,right_min:rightMin});
+    const r=records.find(x=>x.id===id);if(r){r.left_min=leftMin;r.right_min=rightMin;}
+    closeEditBreast();renderLogs();showToast('🤱 모유 수정됨');
+  }catch(e){showToast('저장 실패');}
+}
+
+// ── TOAST ──
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
 
 // ── SHAKE ──
 (function(){
