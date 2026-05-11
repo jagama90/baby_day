@@ -241,6 +241,13 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
 .toggle.on::after{transform:translateX(20px)}
 .s-input{width:120px;text-align:right;border:none;font-size:14px;font-weight:600;color:var(--primary);background:transparent;outline:none;font-family:inherit}
 .s-input-sm{width:60px;text-align:right;border:none;font-size:14px;font-weight:600;color:var(--primary);background:transparent;outline:none;font-family:inherit}
+
+/* TIME ADJUSTER */
+.time-adj{background:var(--bg);border-radius:var(--rs);padding:12px;margin-bottom:12px}
+.time-adj-val{font-size:28px;font-weight:900;text-align:center;color:var(--primary);padding:8px 0;letter-spacing:1px}
+.time-adj-btns{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.time-adj-btns button{padding:8px 2px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;color:var(--txt);cursor:pointer;font-family:inherit}
+.time-adj-btns button:active{background:var(--primary-bg);border-color:var(--primary);color:var(--primary)}
 </style>
 </head>
 <body>
@@ -428,6 +435,7 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
       <div><div class="settings-lbl">🔔 푸시 알림</div><div class="settings-sub">수유 간격 알림 (브라우저)</div></div>
       <button class="toggle" id="toggle-push" onclick="togglePush()"></button>
     </div>
+    <button class="save-btn" onclick="saveSettings()" style="margin-top:8px">저장</button>
     <button class="cancel-btn" onclick="closeSettings()">닫기</button>
   </div>
 </div>
@@ -789,7 +797,29 @@ function renderModalFields(p){
       <div class="fg"><label>양 (ml)</label><input type="number" id="f-ml" placeholder="120" min="0" max="500" value="${p?.ml||''}"></div>
     </div>`;
   }else if(modalType==='breast'){
-    h=`<div class="fg"><label>시간</label><input type="time" id="f-start" value="${st}"></div>
+    // 오늘 누적 모유 계산
+    const todayBreastRecs=records.filter(r=>r.date===fmtDate(selDate)&&r.type==='breast');
+    const todayBrMin=todayBreastRecs.reduce((s,r)=>s+(Number(r.left_min||0)+Number(r.right_min||0)),0);
+    const todayBrMl=breastToFormulaMl(todayBrMin);
+    const todayFmlMl=records.filter(r=>r.date===fmtDate(selDate)&&r.type==='formula').reduce((s,r)=>s+Number(r.ml||0),0);
+    const todayTotalBr=todayBrMl+todayFmlMl;
+    const goalMlBr=parseInt(settings.formulaGoal||0);
+    const todayBannerBr=todayTotalBr>0?`<div style="text-align:center;padding:8px 0;font-size:13px;color:var(--breast);font-weight:600">오늘 ${todayTotalBr}ml 먹었어요!${goalMlBr?' (목표 '+goalMlBr+'ml의 '+Math.round(todayTotalBr/goalMlBr*100)+'%)':''}</div>`:
+      `<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--txt3)">오늘 첫 수유예요 😊</div>`;
+    h=`${todayBannerBr}
+    <div class="fg"><label>시간</label></div>
+    <div class="time-adj">
+      <div class="time-adj-val" id="f-start-display">${st}</div>
+      <div class="time-adj-btns">
+        <button onclick="adjTime(-60)">-1H</button>
+        <button onclick="adjTime(-10)">-10분</button>
+        <button onclick="adjTime(-1)">-1분</button>
+        <button onclick="adjTime(1)">+1분</button>
+        <button onclick="adjTime(10)">+10분</button>
+        <button onclick="adjTime(60)">+1H</button>
+      </div>
+    </div>
+    <input type="hidden" id="f-start" value="${st}">
     <div class="breast-box">
       <div style="font-size:12px;color:var(--breast);font-weight:700;margin-bottom:8px">🤱 수유 시간 설정</div>
       <div class="bt-row">
@@ -1220,6 +1250,32 @@ async function saveEditBreast(id){
   }catch(e){showToast('저장 실패');}
 }
 
+
+// ── TIME / ML ADJUSTERS ──
+function adjTime(diffMin){
+  const el=document.getElementById('f-start');
+  const disp=document.getElementById('f-start-display');
+  if(!el||!disp) return;
+  const [h,m]=el.value.split(':').map(Number);
+  const total=h*60+m+diffMin;
+  const nh=((Math.floor(total/60))%24+24)%24;
+  const nm=((total%60)+60)%60;
+  const newVal=pad(nh)+':'+pad(nm);
+  el.value=newVal;
+  // AM/PM 표시
+  const ampm=nh<12?'오전':'오후';
+  const dh=nh%12||12;
+  disp.textContent=ampm+' '+dh+':'+pad(nm);
+}
+function adjMl(diff){
+  const el=document.getElementById('f-ml');
+  const disp=document.getElementById('f-ml-display');
+  if(!el) return;
+  const cur=parseInt(el.value||0);
+  const next=Math.max(0,cur+diff);
+  el.value=next;
+  if(disp) disp.textContent=next;
+}
 // ── TOAST ──
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
 
