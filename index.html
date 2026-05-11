@@ -748,7 +748,6 @@ function renderLogs(){
         <div class="li-detail">${detail(r)}</div>
         ${r.type==='sleep'&&!r.end_time?`<div class="sleep-timer" id="sleep-timer-${r.id}">⏱ 진행 중...</div>`:''}
         ${r.memo?`<div class="memo-text">📝 ${r.memo}</div>`:''}
-        ${isEditable?`<div style="font-size:10px;color:var(--txt3);margin-top:2px">탭하여 수정</div>`:''}
       </div>
       <div class="li-right">
         <div style="display:flex;align-items:center;gap:2px">
@@ -894,7 +893,6 @@ function renderModalFields(p){
     const todayBannerBr=todayTotalBr>0?`<div style="text-align:center;padding:8px 0;font-size:13px;color:var(--breast);font-weight:600">오늘 ${todayTotalBr}ml 먹었어요!${goalMlBr?' (목표 '+goalMlBr+'ml의 '+Math.round(todayTotalBr/goalMlBr*100)+'%)':''}</div>`:
       `<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--txt3)">오늘 첫 수유예요 😊</div>`;
     h=`${todayBannerBr}
-    <div class="fg"><label>시간</label></div>
     <div class="time-adj">
       <div class="time-adj-val" id="f-start-display">${toAmPm(st)}</div>
       <div class="time-adj-btns">
@@ -1334,10 +1332,6 @@ function openEditBreast(id){
         </div>
       </div>
       <div style="text-align:center;margin-top:8px;font-size:13px;color:var(--breast);font-weight:600">총 <span id="eb-total">${leftMin+rightMin}</span>분</div>
-    </div>
-    <div class="row2" style="margin-bottom:16px">
-      <div class="fg"><label>왼쪽 직접 입력(분)</label><input type="number" id="eb-l-input" min="0" max="60" value="${leftMin}" oninput="syncEB('left',this.value)"></div>
-      <div class="fg"><label>오른쪽 직접 입력(분)</label><input type="number" id="eb-r-input" min="0" max="60" value="${rightMin}" oninput="syncEB('right',this.value)"></div>
     </div>
     <button class="save-btn" onclick="saveEditBreast('${id}')">저장</button>
     <button class="cancel-btn" onclick="closeEditBreast()">취소</button>
