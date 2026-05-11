@@ -512,8 +512,8 @@ function detail(r){
 function loadSettings(){
   ['babyName','babyBirth','formulaGoal','feedWarnHour','darkMode','pushEnabled','babyWeight','avgFormulaMl'].forEach(k=>{settings[k]=localStorage.getItem(k)||'';});
   if(settings.darkMode==='1')document.body.classList.add('dark');
-  document.getElementById('toggle-dark').className='toggle'+(settings.darkMode==='1'?' on':'');
-  document.getElementById('toggle-push').className='toggle'+(settings.pushEnabled==='1'?' on':'');
+  const td=document.getElementById('toggle-dark');if(td)td.className='toggle'+(settings.darkMode==='1'?' on':'');
+  const tp=document.getElementById('toggle-push');if(tp)tp.className='toggle'+(settings.pushEnabled==='1'?' on':'');
 }
 function syncSettingsUI(){
   document.getElementById('s-name').value=settings.babyName||'';
@@ -638,9 +638,16 @@ async function loadAll(){
   try{
     records=await apiGet('baby_logs?order=start_time.desc&limit=1000');
     setSyncState('on','실시간 동기화 중');
-    render();
-  }catch(e){setSyncState('off','연결 실패');showToast('로드 실패: '+e.message);}
-  document.getElementById('loading').classList.add('hidden');
+    try{render();}catch(re){console.error('render:',re);}
+  }catch(e){
+    setSyncState('off','연결 실패');
+    showToast('로드 실패: '+e.message);
+    records=records||[];
+    try{render();}catch(re){}
+  }finally{
+    const ld=document.getElementById('loading');
+    if(ld)ld.classList.add('hidden');
+  }
 }
 function setSyncState(s,t){document.getElementById('sync-dot').className='sync-dot'+(s==='loading'?' loading':s==='off'?' off':'');document.getElementById('sync-txt').textContent=t;}
 async function initRealtime(){
@@ -1572,4 +1579,4 @@ function openEditSleep(id){
     <button class="cancel-btn" onclick="closeEditSleep()">취소</button>
   </div>`;
   let overlay=document.getElementById('edit-sleep-overlay');
-  if(!overlay){overlay=document.createElement('div');overlay.id='edit-sleep-overlay';overlay.className='overlay';overlay.innerHTML='<div class="sheet" style="padding:0"></div>';document.body.append
+  if(!overla
