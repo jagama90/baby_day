@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
+
 // ── SUPABASE CONFIG ──
 const SUPA_URL = 'https://yaxrymvpbvcpxbfqvzen.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlheHJ5bXZwYnZjcHhiZnF2emVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzOTM4MDUsImV4cCI6MjA5Mzk2OTgwNX0.f6ESGyRoclBzK_O8lptqP6ZOjFQwj_8tQJ9bEcuxOOQ';
@@ -173,6 +174,7 @@ function LogPageInner() {
   const [sWarn, setSWarn] = useState('3');
   const [sWeight, setSWeight] = useState('');
   const [sAvgFormula, setSAvgFormula] = useState('');
+  const router = useRouter()  // ← 여기 추가
 
   const recogRef = useRef<any>(null);
   const sleepTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -689,7 +691,7 @@ useEffect(() => {
   // ── SAVE SETTINGS ──
 const handleLogout = async () => {
   await supabase.auth.signOut()
-   const router = useRouter()
+   
    router.push('/login')
    
 }
