@@ -512,8 +512,8 @@ function detail(r){
 function loadSettings(){
   ['babyName','babyBirth','formulaGoal','feedWarnHour','darkMode','pushEnabled','babyWeight','avgFormulaMl'].forEach(k=>{settings[k]=localStorage.getItem(k)||'';});
   if(settings.darkMode==='1')document.body.classList.add('dark');
-  const td=document.getElementById('toggle-dark');if(td)td.className='toggle'+(settings.darkMode==='1'?' on':'');
-  const tp=document.getElementById('toggle-push');if(tp)tp.className='toggle'+(settings.pushEnabled==='1'?' on':'');
+  document.getElementById('toggle-dark').className='toggle'+(settings.darkMode==='1'?' on':'');
+  document.getElementById('toggle-push').className='toggle'+(settings.pushEnabled==='1'?' on':'');
 }
 function syncSettingsUI(){
   document.getElementById('s-name').value=settings.babyName||'';
@@ -638,16 +638,9 @@ async function loadAll(){
   try{
     records=await apiGet('baby_logs?order=start_time.desc&limit=1000');
     setSyncState('on','실시간 동기화 중');
-    try{render();}catch(re){console.error('render:',re);}
-  }catch(e){
-    setSyncState('off','연결 실패');
-    showToast('로드 실패: '+e.message);
-    records=records||[];
-    try{render();}catch(re){}
-  }finally{
-    const ld=document.getElementById('loading');
-    if(ld)ld.classList.add('hidden');
-  }
+    render();
+  }catch(e){setSyncState('off','연결 실패');showToast('로드 실패: '+e.message);}
+  document.getElementById('loading').classList.add('hidden');
 }
 function setSyncState(s,t){document.getElementById('sync-dot').className='sync-dot'+(s==='loading'?' loading':s==='off'?' off':'');document.getElementById('sync-txt').textContent=t;}
 async function initRealtime(){
@@ -1579,4 +1572,122 @@ function openEditSleep(id){
     <button class="cancel-btn" onclick="closeEditSleep()">취소</button>
   </div>`;
   let overlay=document.getElementById('edit-sleep-overlay');
-  if(!overla
+  if(!overlay){overlay=document.createElement('div');overlay.id='edit-sleep-overlay';overlay.className='overlay';overlay.innerHTML='<div class="sheet" style="padding:0"></div>';document.body.appendChild(overlay);}
+  overlay.querySelector('.sheet').innerHTML=html;
+  overlay.classList.remove('hidden');
+}
+function closeEditSleep(){const o=document.getElementById('edit-sleep-overlay');if(o)o.classList.add('hidden');}
+function sleepWakeNow(){
+  const now=new Date();
+  const nt=pad(now.getHours())+':'+pad(now.getMinutes());
+  const el=document.getElementById('es-end');
+  const disp=document.getElementById('es-end-display');
+  if(el)el.value=nt;
+  if(disp)disp.textContent=toAmPm(nt);
+  const adj=document.querySelector('#edit-sleep-overlay .time-adj:nth-of-type(2)');
+  if(adj)adj.style.opacity='1';
+}
+function adjESTime(which,diffMin){
+  const el=document.getElementById('es-'+which);
+  const disp=document.getElementById('es-'+which+'-display');
+  if(!el||!disp)return;
+  let cur=el.value;
+  if(!cur||cur===''){
+    const now=new Date();cur=pad(now.getHours())+':'+pad(now.getMinutes());
+  }
+  const [h,m]=cur.split(':').map(Number);
+  const total=h*60+m+diffMin;
+  const nh=((Math.floor(total/60))%24+24)%24;
+  const nm=((total%60)+60)%60;
+  const newVal=pad(nh)+':'+pad(nm);
+  el.value=newVal;disp.textContent=toAmPm(newVal);
+}
+async function saveEditSleep(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  const stVal=document.getElementById('es-start')?.value||fmtTime(r.start_time);
+  const etVal=document.getElementById('es-end')?.value||'';
+  const newStart=r.date+'T'+stVal+':00+09:00';
+  const patch={start_time:newStart};
+  if(etVal){
+    // 종료시간이 시작보다 이전이면 다음날로 처리
+    const startM=parseInt(stVal.split(':')[0])*60+parseInt(stVal.split(':')[1]);
+    const endM=parseInt(etVal.split(':')[0])*60+parseInt(etVal.split(':')[1]);
+    const endDate=endM<startM?new Date(new Date(r.date).getTime()+86400000):new Date(r.date);
+    patch.end_time=fmtDate(endDate)+'T'+etVal+':00+09:00';
+  } else {
+    patch.end_time=null;
+  }
+  try{
+    await apiPatch(id,patch);
+    r.start_time=patch.start_time;r.end_time=patch.end_time||null;
+    closeEditSleep();renderLogs();startSleepTimer();showToast('😴 수면 수정됨');
+  }catch(e){showToast('저장 실패');}
+}
+function toAmPm(hhmm){
+  const [h,m]=hhmm.split(':').map(Number);
+  const ampm=h<12?'오전':'오후';
+  const dh=h%12||12;
+  return ampm+' '+dh+':'+pad(m);
+}
+function adjTime(diffMin){
+  const el=document.getElementById('f-start');
+  const disp=document.getElementById('f-start-display');
+  if(!el||!disp) return;
+  const [h,m]=el.value.split(':').map(Number);
+  const total=h*60+m+diffMin;
+  const nh=((Math.floor(total/60))%24+24)%24;
+  const nm=((total%60)+60)%60;
+  const newVal=pad(nh)+':'+pad(nm);
+  el.value=newVal;
+  disp.textContent=toAmPm(newVal);
+}
+function adjMl(diff){
+  const el=document.getElementById('f-ml');
+  const disp=document.getElementById('f-ml-display');
+  if(!el) return;
+  const cur=parseInt(el.value||0);
+  const next=Math.max(0,cur+diff);
+  el.value=next;
+  if(disp) disp.textContent=next;
+}
+// ── TOAST ──
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+
+// ── SHAKE ──
+(function(){
+  const THRESHOLD=18,COOLDOWN=2000;let last={x:0,y:0,z:0},lastFired=0;
+  function onMotion(e){const a=e.accelerationIncludingGravity;if(!a)return;const dx=Math.abs(a.x-last.x),dy=Math.abs(a.y-last.y),dz=Math.abs(a.z-last.z);last={x:a.x,y:a.y,z:a.z};if(dx+dy+dz>THRESHOLD){const now=Date.now();if(now-lastFired<COOLDOWN)return;lastFired=now;if(!isListening)toggleMic();}}
+  if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){document.addEventListener('touchend',async function ask(){try{const res=await DeviceMotionEvent.requestPermission();if(res==='granted')window.addEventListener('devicemotion',onMotion);}catch(e){}document.removeEventListener('touchend',ask);},{once:true});}
+  else window.addEventListener('devicemotion',onMotion);
+})();
+
+// ── AUTO REFRESH ──
+setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
+
+// ── SECURE MSG ROTATION ──
+(function(){
+  const msgs=[
+    '🔒 모든 기록은 암호화되어 안전하게 저장됩니다',
+    '🛡️ 개인정보는 외부에 절대 공유되지 않습니다',
+    '✅ 실시간 백업으로 소중한 기록을 보호합니다',
+    '🔐 데이터는 암호화된 DB에 안전하게 보관됩니다'
+  ];
+  let idx=0;
+  setInterval(()=>{
+    const el=document.getElementById('sync-secure');
+    if(!el)return;
+    el.style.opacity='0';
+    setTimeout(()=>{idx=(idx+1)%msgs.length;el.textContent=msgs[idx];el.style.opacity='1';},350);
+  },5000);
+})();
+
+// ── INIT ──
+loadSettings();
+loadAll().then(()=>{initRealtime();});
+
+// iPhone 홈화면 PWA에서는 마이크 권한을 앱 시작 시 미리 요청하지 않음.
+// 실제 음성 입력 버튼을 눌렀을 때만 SpeechRecognition이 권한을 요청하도록 둔다.
+// (사전 getUserMedia 요청을 넣으면 iOS에서 권한 팝업이 불필요하게 한 번 더 뜰 수 있음)
+</script>
+</body>
+</html>
