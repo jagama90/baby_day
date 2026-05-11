@@ -287,7 +287,7 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
 <!-- KAKAO LOGIN GATE -->
 <div class="kakao-gate hidden" id="kakao-gate">
   <div class="kakao-logo">👶</div>
-  <div class="kakao-title">베이비데이</div>
+  <div class="kakao-title">승준이 기록</div>
   <div class="kakao-sub">소중한 육아 기록을 시작해요</div>
   <div id="kakao-profile-wrap" style="display:none;flex-direction:column;align-items:center">
     <div class="kakao-profile" id="kakao-profile">
@@ -1756,24 +1756,8 @@ function showKakaoProfile(user){
 
 function kakaoLogin(){
   kakaoInit();
-  Kakao.Auth.login({
-    success(auth){
-      Kakao.API.request({
-        url:'/v2/user/me',
-        success(res){
-          const profile=res.kakao_account?.profile||{};
-          kakaoUser={
-            id:res.id,
-            nickname:profile.nickname||'',
-            thumbnail:profile.thumbnail_image_url||''
-          };
-          localStorage.setItem('kakao_user',JSON.stringify(kakaoUser));
-          enterApp();
-        },
-        fail(e){showToast('프로필 조회 실패');console.error(e);}
-      });
-    },
-    fail(e){showToast('카카오 로그인 실패');console.error(e);}
+  Kakao.Auth.authorize({
+    redirectUri: window.location.origin + window.location.pathname
   });
 }
 
@@ -1781,14 +1765,64 @@ function kakaoLogout(){
   kakaoInit();
   localStorage.removeItem('kakao_user');
   kakaoUser=null;
-  // 토큰 있으면 로그아웃
   if(Kakao.Auth.getAccessToken()){
-    Kakao.Auth.logout(()=>{showGate();});
+    Kakao.Auth.logout(()=>{
+      document.getElementById('kakao-login-btn').style.display='';
+      document.getElementById('kakao-profile-wrap').style.display='none';
+      showGate();
+    });
   } else {
+    document.getElementById('kakao-login-btn').style.display='';
+    document.getElementById('kakao-profile-wrap').style.display='none';
     showGate();
   }
-  document.getElementById('kakao-login-btn').style.display='';
-  document.getElementById('kakao-profile-wrap').style.display='none';
+}
+
+async function handleKakaoRedirect(){
+  // URL에 code 파라미터가 있으면 토큰 교환
+  const params=new URLSearchParams(window.location.search);
+  const code=params.get('code');
+  if(!code) return false;
+  // code를 토큰으로 교환 (Kakao SDK가 자동 처리)
+  try{
+    await new Promise((resolve,reject)=>{
+      Kakao.Auth.setAccessToken(undefined);
+      // SDK authorize로 받은 code → token
+      fetch('https://kauth.kakao.com/oauth/token',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({
+          grant_type:'authorization_code',
+          client_id:'8164d87c09b1c188b8fe0c1377b12340',
+          redirect_uri:window.location.origin+window.location.pathname,
+          code
+        })
+      }).then(r=>r.json()).then(token=>{
+        if(token.error){reject(token.error);return;}
+        Kakao.Auth.setAccessToken(token.access_token);
+        // 프로필 조회
+        return fetch('https://kapi.kakao.com/v2/user/me',{
+          headers:{Authorization:'Bearer '+token.access_token}
+        });
+      }).then(r=>r.json()).then(res=>{
+        const profile=res.kakao_account?.profile||{};
+        kakaoUser={
+          id:res.id,
+          nickname:profile.nickname||'사용자',
+          thumbnail:profile.thumbnail_image_url||''
+        };
+        localStorage.setItem('kakao_user',JSON.stringify(kakaoUser));
+        // URL에서 code 제거
+        window.history.replaceState({},'',window.location.pathname);
+        resolve();
+      }).catch(reject);
+    });
+    return true;
+  }catch(e){
+    console.error('카카오 토큰 교환 실패:',e);
+    window.history.replaceState({},'',window.location.pathname);
+    return false;
+  }
 }
 
 function enterApp(){
@@ -1797,8 +1831,11 @@ function enterApp(){
   loadAll().then(()=>{initRealtime();});
 }
 
-function checkAuth(){
+async function checkAuth(){
   kakaoInit();
+  // redirect 후 code 처리
+  const handled=await handleKakaoRedirect();
+  if(handled){enterApp();return;}
   // 저장된 유저 있으면 바로 입장
   const saved=localStorage.getItem('kakao_user');
   if(saved){
