@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BabyDay</string>
+    <string name="title_activity_main">BabyDay</string>
+    <string name="package_name">com.babyday.app</string>
+    <string name="custom_url_scheme">com.babyday.app</string>
+</resources>
