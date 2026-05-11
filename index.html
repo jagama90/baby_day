@@ -85,10 +85,10 @@ body.dark .hd{background:linear-gradient(135deg,#1A2060 0%,#2D1060 100%)}
 /* PREDICT – COMPACT INLINE */
 .predict-bar{display:none}
 .predict-bar.hidden{display:none}
-.predict-inline{background:linear-gradient(135deg,#EEF1FF,#E6EAFF);border:1px solid rgba(91,123,255,.18);border-radius:12px;margin:8px 16px 0;padding:9px 14px;display:flex;align-items:center;justify-content:space-between}
+.predict-inline{background:var(--primary-bg);border:1px solid rgba(91,123,255,.15);border-radius:10px;margin:0 16px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between}
 .predict-inline.hidden{display:none}
 .predict-label{font-size:10px;color:var(--txt2);font-weight:700;letter-spacing:.3px;margin-bottom:1px}
-.predict-val{font-size:17px;font-weight:900;color:var(--primary);letter-spacing:-.8px;line-height:1}
+.predict-val{font-size:15px;font-weight:900;color:var(--primary);letter-spacing:-.5px;line-height:1}
 .predict-pill{background:var(--primary);color:#fff;border-radius:16px;padding:4px 11px;font-size:11px;font-weight:700;white-space:nowrap}
 body.dark .predict-inline{background:linear-gradient(135deg,#1A1F3A,#161830);border-color:rgba(91,123,255,.22)}
 
@@ -310,7 +310,7 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
     <div class="qb" onclick="quickAdd('bath')"><div class="qb-icon bath">🛁</div><div class="qb-name">목욕</div></div>
   </div>
   <div class="last-bar" id="last-bar"></div>
-  <div class="predict-inline hidden" id="predict-bar">
+  <div class="predict-inline hidden" id="predict-bar" style="display:none!important">
     <div>
       <div class="predict-label">🍼 다음 수유 예상</div>
       <div class="predict-val" id="predict-val">--:--</div>
