@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -24,3 +25,124 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* 기존 내용 아래에 추가 */
+:root {
+  --sleep: #7B6CF6; --sleep-bg: #F0EEFF;
+  --formula: #F5A623; --formula-bg: #FFF8EC;
+  --breast: #E8667A; --breast-bg: #FFF0F2;
+  --diaper: #3DBAA2; --diaper-bg: #EDFAF7;
+  --growth: #34C759; --growth-bg: #E8F8ED;
+  --hospital: #FF6B6B; --hospital-bg: #FFF0F0;
+  --bath: #29A8E0; --bath-bg: #E8F6FD;
+  --vaccine: #9B59B6; --vaccine-bg: #F5EEF8;
+  --primary: #5B7BFF; --primary-bg: #EEF1FF;
+  --bg: #F4F5FA; --card: #fff;
+  --txt: #1A1D2E; --txt2: #6B7280; --txt3: #B0B7C3;
+  --border: #E8EAF0; --r: 16px; --rs: 10px;
+}
+body.dark {
+  --bg: #0F1117; --card: #1C1F2E; --txt: #F0F2FF; --txt2: #9BA3B8;
+  --border: #2A2D3E; --primary-bg: #1A1F3A;
+  --sleep-bg: #1E1A3A; --formula-bg: #2A1F0A; --breast-bg: #2A141A;
+  --diaper-bg: #0A2220; --growth-bg: #0A2010; --hospital-bg: #2A0A0A; --bath-bg: #0A1E2A;
+}
+
+
+:root {
+  --sleep:#7B6CF6;--sleep-bg:#F0EEFF;
+  --formula:#F5A623;--formula-bg:#FFF8EC;
+  --breast:#E8667A;--breast-bg:#FFF0F2;
+  --diaper:#3DBAA2;--diaper-bg:#EDFAF7;
+  --growth:#34C759;--growth-bg:#E8F8ED;
+  --hospital:#FF6B6B;--hospital-bg:#FFF0F0;
+  --bath:#29A8E0;--bath-bg:#E8F6FD;
+  --vaccine:#9B59B6;--vaccine-bg:#F5EEF8;
+  --primary:#5B7BFF;--primary-bg:#EEF1FF;
+  --bg:#F4F5FA;--card:#fff;
+  --txt:#1A1D2E;--txt2:#6B7280;--txt3:#B0B7C3;
+  --border:#E8EAF0;--r:16px;--rs:10px;
+}
+body.dark {
+  --bg:#0F1117;--card:#1C1F2E;--txt:#F0F2FF;--txt2:#9BA3B8;
+  --border:#2A2D3E;--primary-bg:#1A1F3A;
+  --sleep-bg:#1E1A3A;--formula-bg:#2A1F0A;--breast-bg:#2A141A;
+  --diaper-bg:#0A2220;--growth-bg:#0A2010;--hospital-bg:#2A0A0A;--bath-bg:#0A1E2A;
+}
+.hd{background:linear-gradient(135deg,#4A6CF7 0%,#7B3FF2 100%);padding:16px 16px 0;color:#fff;position:relative;overflow:hidden}
+.hd-top{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:14px;position:relative;z-index:1}
+.hd-title{font-size:22px;font-weight:900;letter-spacing:-.6px}
+.hd-sub{font-size:12px;opacity:.8;margin-top:2px}
+.hd-actions{display:flex;gap:8px}
+.hd-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px}
+.sync-bar{border-top:1px solid rgba(255,255,255,.12);margin:0 -16px;padding:6px 16px 8px}
+.sync-row{display:flex;align-items:center;gap:7px;font-size:11.5px;color:rgba(255,255,255,.9);font-weight:500}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4ADE80;flex-shrink:0}
+.quick-row{display:flex;gap:5px;overflow-x:auto;padding:14px 16px 12px;background:var(--card);border-bottom:1px solid var(--border);scrollbar-width:none}
+.quick-row::-webkit-scrollbar{display:none}
+.qb{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;min-width:50px}
+.qb-icon{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;transition:transform .12s;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.qb:active .qb-icon{transform:scale(.88)}
+.qb-icon.sleep{background:var(--sleep-bg)}.qb-icon.formula{background:var(--formula-bg)}
+.qb-icon.breast{background:var(--breast-bg)}.qb-icon.diaper{background:var(--diaper-bg)}
+.qb-icon.growth{background:var(--growth-bg)}.qb-icon.hospital{background:var(--hospital-bg)}
+.qb-icon.bath{background:var(--bath-bg)}.qb-icon.vaccine{background:var(--vaccine-bg)}
+.qb-name{font-size:10.5px;color:var(--txt2);font-weight:600}
+.date-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--card);border-bottom:1px solid var(--border)}
+.dnbtn{background:none;border:none;font-size:22px;color:var(--txt2);cursor:pointer;padding:2px 10px}
+.date-main{font-size:15px;font-weight:700;text-align:center}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end}
+.sheet{background:var(--card);border-radius:24px 24px 0 0;padding:8px 16px 40px;width:100%;max-height:92vh;overflow-y:auto}
+.drag-bar{width:36px;height:4px;background:var(--border);border-radius:2px;margin:8px auto 14px}
+.sheet-title{font-size:17px;font-weight:700;margin-bottom:14px;text-align:center}
+.type-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+.type-tile{border:2px solid var(--border);border-radius:var(--rs);padding:11px 4px;text-align:center;cursor:pointer;background:var(--card);font-family:inherit;width:100%}
+.type-tile .em{font-size:22px;display:block;margin-bottom:4px}
+.type-tile .nm{font-size:11px;color:var(--txt2);font-weight:500}
+.type-tile.sel.sleep{border-color:var(--sleep);background:var(--sleep-bg)}
+.type-tile.sel.formula{border-color:var(--formula);background:var(--formula-bg)}
+.type-tile.sel.breast{border-color:var(--breast);background:var(--breast-bg)}
+.type-tile.sel.diaper{border-color:var(--diaper);background:var(--diaper-bg)}
+.type-tile.sel.growth{border-color:var(--growth);background:var(--growth-bg)}
+.type-tile.sel.hospital{border-color:var(--hospital);background:var(--hospital-bg)}
+.type-tile.sel.bath{border-color:var(--bath);background:var(--bath-bg)}
+.type-tile.sel.vaccine{border-color:var(--vaccine);background:var(--vaccine-bg)}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:12px;color:var(--txt2);margin-bottom:5px;font-weight:500}
+.fg input,.fg select,.fg textarea{width:100%;padding:0 12px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:15px;font-family:inherit;color:var(--txt);background:var(--card);outline:none;height:48px}
+.fg textarea{height:72px;padding:12px;resize:none}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--primary)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;border-radius:var(--rs);overflow:hidden;border:1.5px solid var(--border)}
+.seg button{flex:1;padding:10px 4px;background:var(--card);border:none;font-size:13px;font-family:inherit;color:var(--txt2);cursor:pointer}
+.seg button.sel{background:var(--primary);color:#fff}
+.breast-box{background:var(--breast-bg);border-radius:var(--rs);padding:12px;margin-bottom:12px}
+.bt-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bt-side{background:var(--card);border-radius:8px;padding:10px;text-align:center}
+.bt-side-name{font-size:11px;color:var(--txt2);margin-bottom:6px}
+.bt-side-val{font-size:22px;font-weight:700;color:var(--breast)}
+.bt-btns{display:flex;gap:4px;justify-content:center;margin-top:6px}
+.bt-btns button{width:36px;height:36px;border-radius:50%;border:none;background:var(--breast-bg);color:var(--breast);font-size:20px;cursor:pointer}
+.save-btn{width:100%;padding:15px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px}
+.cancel-btn{width:100%;padding:10px;background:none;border:none;color:var(--txt2);font-size:14px;cursor:pointer;font-family:inherit;margin-top:4px}
+.log-list{padding:12px 16px 140px}
+.log-card{background:var(--card);border-radius:18px;padding:14px 15px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+.li-icon{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.li-icon.sleep{background:var(--sleep-bg)}.li-icon.formula{background:var(--formula-bg)}
+.li-icon.breast{background:var(--breast-bg)}.li-icon.diaper{background:var(--diaper-bg)}
+.li-icon.growth{background:var(--growth-bg)}.li-icon.hospital{background:var(--hospital-bg)}
+.li-icon.bath{background:var(--bath-bg)}.li-icon.vaccine{background:var(--vaccine-bg)}
+.li-body{flex:1;min-width:0}
+.li-type{font-size:14px;font-weight:700}
+.li-type.sleep{color:var(--sleep)}.li-type.formula{color:var(--formula)}
+.li-type.breast{color:var(--breast)}.li-type.diaper{color:var(--diaper)}
+.li-type.growth{color:var(--growth)}.li-type.hospital{color:var(--hospital)}
+.li-type.bath{color:var(--bath)}.li-type.vaccine{color:var(--vaccine)}
+.li-detail{font-size:13px;color:var(--txt2);margin-top:3px}
+.li-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
+.li-time{font-size:14px;font-weight:600}
+.li-end{font-size:11px;color:var(--txt3)}
+.del-btn{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:18px;padding:0 0 0 6px}
+.memo-text{font-size:11px;color:var(--txt3);margin-top:3px;font-style:italic}
+.empty{text-align:center;padding:60px 20px;color:var(--txt3)}
+.empty-e{font-size:44px;margin-bottom:12px}

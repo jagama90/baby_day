@@ -34,7 +34,7 @@ export default function Dashboard() {
           </div>
         ) : (
           babies.map((member: any) => (
-            <Link key={member.baby_id} href={`/log?babyId=${member.baby_id}`}>
+            <Link key={member.baby_id} href={`/log?babyId=${member.baby_id}&name=${member.babies?.name}`}>
               <div className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex items-center gap-4">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-2xl">
                   👶
