@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="아기기록">
 <title>아기 기록</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
 <style>
 :root{
   --sleep:#7B6CF6;--sleep-bg:#F0EEFF;
@@ -265,9 +266,44 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
 .time-adj-btns{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
 .time-adj-btns button{padding:8px 2px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;color:var(--txt);cursor:pointer;font-family:inherit}
 .time-adj-btns button:active{background:var(--primary-bg);border-color:var(--primary);color:var(--primary)}
+
+/* KAKAO LOGIN */
+.kakao-gate{position:fixed;inset:0;background:linear-gradient(160deg,#1A1D2E 0%,#2D1F5E 50%,#1A1D2E 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:0}
+.kakao-gate.hidden{display:none}
+.kakao-logo{font-size:64px;margin-bottom:16px;filter:drop-shadow(0 4px 16px rgba(123,108,246,.4))}
+.kakao-title{font-size:26px;font-weight:900;color:#fff;letter-spacing:-.8px;margin-bottom:6px}
+.kakao-sub{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:48px;font-weight:400}
+.kakao-btn{display:flex;align-items:center;gap:10px;background:#FEE500;color:#191919;border:none;border-radius:16px;padding:16px 28px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 20px rgba(254,229,0,.3);letter-spacing:-.3px}
+.kakao-btn:active{transform:scale(.97)}
+.kakao-btn img{width:22px;height:22px}
+.kakao-secure{margin-top:20px;font-size:11px;color:rgba(255,255,255,.3)}
+.kakao-profile{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.08);border-radius:12px;margin-bottom:12px;cursor:pointer}
+.kakao-profile img{width:32px;height:32px;border-radius:50%;object-fit:cover}
+.kakao-profile-name{font-size:13px;color:rgba(255,255,255,.9);font-weight:600}
+.kakao-logout{font-size:11px;color:rgba(255,255,255,.35);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline;margin-top:8px}
 </style>
 </head>
 <body>
+<!-- KAKAO LOGIN GATE -->
+<div class="kakao-gate hidden" id="kakao-gate">
+  <div class="kakao-logo">👶</div>
+  <div class="kakao-title">베이비데이</div>
+  <div class="kakao-sub">소중한 육아 기록을 시작해요</div>
+  <div id="kakao-profile-wrap" style="display:none;flex-direction:column;align-items:center">
+    <div class="kakao-profile" id="kakao-profile">
+      <img id="kakao-profile-img" src="" alt="">
+      <span class="kakao-profile-name" id="kakao-profile-name"></span>
+    </div>
+    <button class="kakao-btn" onclick="kakaoLogin()" style="margin-bottom:0">입장하기</button>
+    <button class="kakao-logout" onclick="kakaoLogout()">다른 계정으로 로그인</button>
+  </div>
+  <button class="kakao-btn" id="kakao-login-btn" onclick="kakaoLogin()">
+    <img src="https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_small.png" alt="kakao">
+    카카오로 시작하기
+  </button>
+  <div class="kakao-secure">🔒 개인정보는 카카오 계정으로만 인증되며 외부에 공유되지 않습니다</div>
+</div>
+
 <div class="loading-overlay" id="loading"><div class="spinner"></div><div>불러오는 중...</div></div>
 <div class="toast" id="toast"></div>
 
@@ -1688,9 +1724,93 @@ setInterval(()=>{renderLastBar();renderWarnings();checkPushAlerts();},60000);
   },5000);
 })();
 
+// ── KAKAO AUTH ──
+const KAKAO_KEY='8164d87c09b1c188b8fe0c1377b12340';
+let kakaoUser=null;
+
+function kakaoInit(){
+  if(typeof Kakao==='undefined')return;
+  if(!Kakao.isInitialized()) Kakao.init(KAKAO_KEY);
+}
+
+function showGate(){
+  document.getElementById('kakao-gate').classList.remove('hidden');
+  document.getElementById('loading').classList.add('hidden');
+  // 이미 로그인된 토큰 있으면 프로필 보여주기
+  const saved=localStorage.getItem('kakao_user');
+  if(saved){
+    try{
+      kakaoUser=JSON.parse(saved);
+      showKakaoProfile(kakaoUser);
+    }catch(e){}
+  }
+}
+
+function showKakaoProfile(user){
+  document.getElementById('kakao-login-btn').style.display='none';
+  const wrap=document.getElementById('kakao-profile-wrap');
+  wrap.style.display='flex';
+  document.getElementById('kakao-profile-img').src=user.thumbnail||'';
+  document.getElementById('kakao-profile-name').textContent=user.nickname+'님, 안녕하세요!';
+}
+
+function kakaoLogin(){
+  kakaoInit();
+  Kakao.Auth.login({
+    success(auth){
+      Kakao.API.request({
+        url:'/v2/user/me',
+        success(res){
+          const profile=res.kakao_account?.profile||{};
+          kakaoUser={
+            id:res.id,
+            nickname:profile.nickname||'',
+            thumbnail:profile.thumbnail_image_url||''
+          };
+          localStorage.setItem('kakao_user',JSON.stringify(kakaoUser));
+          enterApp();
+        },
+        fail(e){showToast('프로필 조회 실패');console.error(e);}
+      });
+    },
+    fail(e){showToast('카카오 로그인 실패');console.error(e);}
+  });
+}
+
+function kakaoLogout(){
+  kakaoInit();
+  localStorage.removeItem('kakao_user');
+  kakaoUser=null;
+  // 토큰 있으면 로그아웃
+  if(Kakao.Auth.getAccessToken()){
+    Kakao.Auth.logout(()=>{showGate();});
+  } else {
+    showGate();
+  }
+  document.getElementById('kakao-login-btn').style.display='';
+  document.getElementById('kakao-profile-wrap').style.display='none';
+}
+
+function enterApp(){
+  document.getElementById('kakao-gate').classList.add('hidden');
+  loadSettings();
+  loadAll().then(()=>{initRealtime();});
+}
+
+function checkAuth(){
+  kakaoInit();
+  // 저장된 유저 있으면 바로 입장
+  const saved=localStorage.getItem('kakao_user');
+  if(saved){
+    try{kakaoUser=JSON.parse(saved);}catch(e){}
+    enterApp();
+  } else {
+    showGate();
+  }
+}
+
 // ── INIT ──
-loadSettings();
-loadAll().then(()=>{initRealtime();});
+checkAuth();
 
 // iPhone 홈화면 PWA에서는 마이크 권한을 앱 시작 시 미리 요청하지 않음.
 // 실제 음성 입력 버튼을 눌렀을 때만 SpeechRecognition이 권한을 요청하도록 둔다.
