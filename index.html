@@ -792,11 +792,42 @@ function renderModalFields(p){
       <div class="fg"><label>종료 시간 (선택)</label><input type="time" id="f-end" value="${p?.end_time?fmtTime(p.end_time):''}"></div>
     </div>`;
   }else if(modalType==='formula'){
-    h=`<div class="row2">
-      <div class="fg"><label>시간</label><input type="time" id="f-start" value="${st}"></div>
-      <div class="fg"><label>양 (ml)</label><input type="number" id="f-ml" placeholder="120" min="0" max="500" value="${p?.ml||''}"></div>
-    </div>`;
-  }else if(modalType==='breast'){
+    const todayFmlOnly=records.filter(r=>r.date===fmtDate(selDate)&&r.type==='formula').reduce((s,r)=>s+Number(r.ml||0),0);
+    const todayBrRecs2=records.filter(r=>r.date===fmtDate(selDate)&&r.type==='breast');
+    const todayBrMl2=breastToFormulaMl(todayBrRecs2.reduce((s,r)=>s+(Number(r.left_min||0)+Number(r.right_min||0)),0));
+    const todayTotalFml=todayFmlOnly+todayBrMl2;
+    const goalFml=parseInt(settings.formulaGoal||0);
+    const bannerFml=todayTotalFml>0
+      ?`<div style="text-align:center;padding:6px 0 10px;font-size:13px;color:var(--formula);font-weight:600">오늘 ${todayTotalFml}ml 먹었어요!${goalFml?' (목표 '+goalFml+'ml의 '+Math.round(todayTotalFml/goalFml*100)+'%)':''}</div>`
+      :`<div style="text-align:center;padding:6px 0 10px;font-size:12px;color:var(--txt3)">오늘 첫 수유예요 😊</div>`;
+    const initMl=Number(p?.ml||0);
+    h=`${bannerFml}
+    <div class="time-adj">
+      <div class="time-adj-val" id="f-start-display">${toAmPm(st)}</div>
+      <div class="time-adj-btns">
+        <button onclick="adjTime(-60)">-1H</button>
+        <button onclick="adjTime(-10)">-10분</button>
+        <button onclick="adjTime(-1)">-1분</button>
+        <button onclick="adjTime(1)">+1분</button>
+        <button onclick="adjTime(10)">+10분</button>
+        <button onclick="adjTime(60)">+1H</button>
+      </div>
+    </div>
+    <input type="hidden" id="f-start" value="${st}">
+    <div style="text-align:center;margin:8px 0 6px">
+      <div style="font-size:40px;font-weight:900;color:var(--formula);line-height:1" id="f-ml-display">${initMl}</div>
+      <div style="font-size:13px;color:var(--txt2);margin-top:4px">ml</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:4px">
+      <button onclick="adjMl(-10)" style="padding:9px 2px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--txt)">-10</button>
+      <button onclick="adjMl(-5)" style="padding:9px 2px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--txt)">-5</button>
+      <button onclick="adjMl(-1)" style="padding:9px 2px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--txt)">-1</button>
+      <button onclick="adjMl(1)" style="padding:9px 2px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--txt)">+1</button>
+      <button onclick="adjMl(5)" style="padding:9px 2px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--txt)">+5</button>
+      <button onclick="adjMl(10)" style="padding:9px 2px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--txt)">+10</button>
+    </div>
+    <input type="hidden" id="f-ml" value="${initMl}">`;
+}else if(modalType==='breast'){
     // 오늘 누적 모유 계산
     const todayBreastRecs=records.filter(r=>r.date===fmtDate(selDate)&&r.type==='breast');
     const todayBrMin=todayBreastRecs.reduce((s,r)=>s+(Number(r.left_min||0)+Number(r.right_min||0)),0);
@@ -809,7 +840,7 @@ function renderModalFields(p){
     h=`${todayBannerBr}
     <div class="fg"><label>시간</label></div>
     <div class="time-adj">
-      <div class="time-adj-val" id="f-start-display">${st}</div>
+      <div class="time-adj-val" id="f-start-display">${toAmPm(st)}</div>
       <div class="time-adj-btns">
         <button onclick="adjTime(-60)">-1H</button>
         <button onclick="adjTime(-10)">-10분</button>
@@ -830,10 +861,7 @@ function renderModalFields(p){
       </div>
       <div style="text-align:center;margin-top:8px;font-size:13px;color:var(--breast);font-weight:600">총 <span id="bt-total">${leftMin+rightMin}</span>분</div>
     </div>
-    <div class="row2">
-      <div class="fg"><label>왼쪽 직접 입력(분)</label><input type="number" id="f-left" min="0" max="60" value="${leftMin}" oninput="syncSide('left',this.value)"></div>
-      <div class="fg"><label>오른쪽 직접 입력(분)</label><input type="number" id="f-right" min="0" max="60" value="${rightMin}" oninput="syncSide('right',this.value)"></div>
-    </div>`;
+`;
   }else if(modalType==='diaper'){
     _dk=p?.diaper_kind||'urine';
     h=`<div class="fg"><label>시간</label><input type="time" id="f-start" value="${st}"></div>
@@ -1252,6 +1280,12 @@ async function saveEditBreast(id){
 
 
 // ── TIME / ML ADJUSTERS ──
+function toAmPm(hhmm){
+  const [h,m]=hhmm.split(':').map(Number);
+  const ampm=h<12?'오전':'오후';
+  const dh=h%12||12;
+  return ampm+' '+dh+':'+pad(m);
+}
 function adjTime(diffMin){
   const el=document.getElementById('f-start');
   const disp=document.getElementById('f-start-display');
@@ -1262,10 +1296,7 @@ function adjTime(diffMin){
   const nm=((total%60)+60)%60;
   const newVal=pad(nh)+':'+pad(nm);
   el.value=newVal;
-  // AM/PM 표시
-  const ampm=nh<12?'오전':'오후';
-  const dh=nh%12||12;
-  disp.textContent=ampm+' '+dh+':'+pad(nm);
+  disp.textContent=toAmPm(newVal);
 }
 function adjMl(diff){
   const el=document.getElementById('f-ml');
