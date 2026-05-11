@@ -82,13 +82,15 @@ body.dark .hd{background:linear-gradient(135deg,#1A2060 0%,#2D1060 100%)}
 .warn-banner{margin:10px 16px 0;border-radius:12px;padding:11px 15px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px}
 .warn-banner.feed{background:linear-gradient(135deg,#FFF3E0,#FFE8C0);color:#BF4400;border:1px solid #FFCC80}
 .warn-banner.hidden{display:none}
-/* PREDICT – PREMIUM CARD */
-.predict-bar{background:linear-gradient(135deg,#EEF1FF,#E6EAFF);border:1px solid rgba(91,123,255,.18);border-radius:16px;margin:10px 16px 0;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(91,123,255,.08)}
+/* PREDICT – COMPACT INLINE */
+.predict-bar{display:none}
 .predict-bar.hidden{display:none}
-.predict-label{font-size:10px;color:var(--txt2);font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px}
-.predict-val{font-size:28px;font-weight:900;color:var(--primary);letter-spacing:-1.5px;line-height:1}
-.predict-pill{background:var(--primary);color:#fff;border-radius:20px;padding:5px 13px;font-size:11px;font-weight:700;white-space:nowrap}
-body.dark .predict-bar{background:linear-gradient(135deg,#1A1F3A,#161830);border-color:rgba(91,123,255,.22)}
+.predict-inline{background:linear-gradient(135deg,#EEF1FF,#E6EAFF);border:1px solid rgba(91,123,255,.18);border-radius:12px;margin:8px 16px 0;padding:9px 14px;display:flex;align-items:center;justify-content:space-between}
+.predict-inline.hidden{display:none}
+.predict-label{font-size:10px;color:var(--txt2);font-weight:700;letter-spacing:.3px;margin-bottom:1px}
+.predict-val{font-size:17px;font-weight:900;color:var(--primary);letter-spacing:-.8px;line-height:1}
+.predict-pill{background:var(--primary);color:#fff;border-radius:16px;padding:4px 11px;font-size:11px;font-weight:700;white-space:nowrap}
+body.dark .predict-inline{background:linear-gradient(135deg,#1A1F3A,#161830);border-color:rgba(91,123,255,.22)}
 
 /* LAST ACTIVITY – PREMIUM */
 .last-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border)}
@@ -308,14 +310,14 @@ body.dark .chip.goal{background:#0A2010;color:#81C784}
     <div class="qb" onclick="quickAdd('bath')"><div class="qb-icon bath">🛁</div><div class="qb-name">목욕</div></div>
   </div>
   <div class="last-bar" id="last-bar"></div>
-  <div class="warn-banner feed hidden" id="warn-feed">⚠️ <span id="warn-feed-txt"></span></div>
-  <div class="predict-bar hidden" id="predict-bar">
+  <div class="predict-inline hidden" id="predict-bar">
     <div>
       <div class="predict-label">🍼 다음 수유 예상</div>
       <div class="predict-val" id="predict-val">--:--</div>
     </div>
     <div class="predict-pill" id="predict-in">계산 중</div>
   </div>
+  <div class="warn-banner feed hidden" id="warn-feed">⚠️ <span id="warn-feed-txt"></span></div>
   <div class="date-nav">
     <button class="dnbtn" onclick="shiftDay(-1)">‹</button>
     <div><div class="date-main" id="date-main"></div><div class="date-age" id="date-age"></div></div>
@@ -548,11 +550,36 @@ function toggleDark(){const on=document.body.classList.toggle('dark');saveSettin
 
 // ── PUSH NOTIFICATIONS ──
 async function togglePush(){
-  if(settings.pushEnabled==='1'){saveSetting('pushEnabled','0');document.getElementById('toggle-push').className='toggle';showToast('알림 꺼짐');return;}
-  if(!('Notification' in window)){showToast('이 브라우저는 알림을 지원하지 않아요');return;}
-  const perm=await Notification.requestPermission();
-  if(perm==='granted'){saveSetting('pushEnabled','1');document.getElementById('toggle-push').className='toggle on';showToast('🔔 알림 켜짐!');}
-  else showToast('알림 권한이 거부됐어요');
+  if(settings.pushEnabled==='1'){
+    saveSetting('pushEnabled','0');
+    document.getElementById('toggle-push').className='toggle';
+    showToast('알림 꺼짐');
+    return;
+  }
+  if(!('Notification' in window)){
+    showToast('이 브라우저는 알림을 지원하지 않아요');
+    return;
+  }
+  if(Notification.permission==='denied'){
+    showToast('알림이 차단됐어요. 브라우저 설정에서 허용해주세요');
+    return;
+  }
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm==='granted'){
+      saveSetting('pushEnabled','1');
+      document.getElementById('toggle-push').className='toggle on';
+      showToast('🔔 알림 켜짐!');
+    }else{
+      saveSetting('pushEnabled','0');
+      document.getElementById('toggle-push').className='toggle';
+      showToast('알림 권한이 거부됐어요');
+    }
+  }catch(e){
+    saveSetting('pushEnabled','0');
+    document.getElementById('toggle-push').className='toggle';
+    showToast('알림 설정 중 오류가 발생했어요');
+  }
 }
 function sendPushIfNeeded(msg){
   if(settings.pushEnabled==='1'&&Notification.permission==='granted') new Notification('👶 아기 기록',{body:msg,icon:'https://cdn.jsdelivr.net/npm/emoji-datasource-apple@15.0.1/img/apple/64/1f476.png'});
