@@ -685,15 +685,18 @@ function renderLogs(){
   const recs=records.filter(r=>r.date===ds&&r.type!=='growth'&&r.type!=='hospital').sort((a,b)=>{const ta=a.end_time||a.start_time,tb=b.end_time||b.start_time;return tb>ta?1:-1;});
   const el=document.getElementById('log-list');
   if(!recs.length){el.innerHTML=`<div class="empty"><div class="empty-e">📋</div><div>이 날의 기록이 없어요</div></div>`;return;}
-  el.innerHTML=recs.map(r=>`
-    <div class="log-card" ${r.type==='breast'?`onclick="openEditBreast('${r.id}')" style="cursor:pointer"`:''}> 
+  el.innerHTML=recs.map(r=>{
+    const isEditable=r.type==='breast'||r.type==='diaper'||r.type==='sleep';
+    const clickAttr=isEditable?`onclick="${r.type==='breast'?`openEditBreast('${r.id}')`:r.type==='diaper'?`openEditDiaper('${r.id}')`:``}${r.type==='sleep'?`openEditSleep('${r.id}')`:''}" style="cursor:pointer"`:'';
+    return `
+    <div class="log-card" ${clickAttr}> 
       <div class="li-icon ${r.type}">${EMOJI[r.type]}</div>
       <div class="li-body">
         <div class="li-type ${r.type}">${LABEL[r.type]}${r.sleep_kind?' · '+(r.sleep_kind==='nap'?'낮잠':'밤잠'):''}</div>
         <div class="li-detail">${detail(r)}</div>
         ${r.type==='sleep'&&!r.end_time?`<div class="sleep-timer" id="sleep-timer-${r.id}">⏱ 진행 중...</div>`:''}
         ${r.memo?`<div class="memo-text">📝 ${r.memo}</div>`:''}
-        ${r.type==='breast'?`<div style="font-size:10px;color:var(--txt3);margin-top:2px">탭하여 수정</div>`:''}
+        ${isEditable?`<div style="font-size:10px;color:var(--txt3);margin-top:2px">탭하여 수정</div>`:''}
       </div>
       <div class="li-right">
         <div style="display:flex;align-items:center;gap:2px">
@@ -702,7 +705,8 @@ function renderLogs(){
         </div>
         ${r.end_time?`<div class="li-end">~ ${fmtTime(r.end_time)}</div>`:''}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── SLEEP TIMER ──
@@ -1228,9 +1232,32 @@ function breastToFormulaMl(totalBreastMin){
 function openEditBreast(id){
   const r=records.find(x=>x.id===id);if(!r)return;
   leftMin=Number(r.left_min||0);rightMin=Number(r.right_min||0);
+  const st=fmtTime(r.start_time);
+  // 오늘 누적
+  const todayBreastRecs=records.filter(x=>x.date===r.date&&x.type==='breast');
+  const todayBrMin=todayBreastRecs.reduce((s,x)=>s+(Number(x.left_min||0)+Number(x.right_min||0)),0);
+  const todayBrMl=breastToFormulaMl(todayBrMin);
+  const todayFmlMl=records.filter(x=>x.date===r.date&&x.type==='formula').reduce((s,x)=>s+Number(x.ml||0),0);
+  const todayTotal=todayBrMl+todayFmlMl;
+  const goalMlBr=parseInt(settings.formulaGoal||0);
+  const banner=todayTotal>0?`<div style="text-align:center;padding:6px 0 10px;font-size:13px;color:var(--breast);font-weight:600">오늘 ${todayTotal}ml 먹었어요!${goalMlBr?' (목표 '+goalMlBr+'ml의 '+Math.round(todayTotal/goalMlBr*100)+'%)':''}</div>`:
+    `<div style="text-align:center;padding:6px 0 10px;font-size:12px;color:var(--txt3)">오늘 첫 수유예요 😊</div>`;
   const html=`<div style="padding:20px 16px 32px">
     <div class="drag-bar" style="margin-bottom:16px"></div>
-    <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:16px">🤱 모유 수정</div>
+    <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:4px">🤱 모유 수정</div>
+    ${banner}
+    <div class="time-adj">
+      <div class="time-adj-val" id="eb-start-display">${toAmPm(st)}</div>
+      <div class="time-adj-btns">
+        <button onclick="adjEBTime(-60)">-1H</button>
+        <button onclick="adjEBTime(-10)">-10분</button>
+        <button onclick="adjEBTime(-1)">-1분</button>
+        <button onclick="adjEBTime(1)">+1분</button>
+        <button onclick="adjEBTime(10)">+10분</button>
+        <button onclick="adjEBTime(60)">+1H</button>
+      </div>
+    </div>
+    <input type="hidden" id="eb-start" value="${st}">
     <div class="breast-box">
       <div style="font-size:12px;color:var(--breast);font-weight:700;margin-bottom:8px">수유 시간 (분)</div>
       <div class="bt-row">
@@ -1264,6 +1291,18 @@ function openEditBreast(id){
   overlay.classList.remove('hidden');
 }
 function closeEditBreast(){const o=document.getElementById('edit-breast-overlay');if(o)o.classList.add('hidden');}
+function adjEBTime(diffMin){
+  const el=document.getElementById('eb-start');
+  const disp=document.getElementById('eb-start-display');
+  if(!el||!disp) return;
+  const [h,m]=el.value.split(':').map(Number);
+  const total=h*60+m+diffMin;
+  const nh=((Math.floor(total/60))%24+24)%24;
+  const nm=((total%60)+60)%60;
+  const newVal=pad(nh)+':'+pad(nm);
+  el.value=newVal;
+  disp.textContent=toAmPm(newVal);
+}
 function adjEB(side,d){
   if(side==='left'){leftMin=Math.max(0,leftMin+d);const e=document.getElementById('eb-left');if(e)e.textContent=leftMin;const f=document.getElementById('eb-l-input');if(f)f.value=leftMin;}
   else{rightMin=Math.max(0,rightMin+d);const e=document.getElementById('eb-right');if(e)e.textContent=rightMin;const f=document.getElementById('eb-r-input');if(f)f.value=rightMin;}
@@ -1271,15 +1310,186 @@ function adjEB(side,d){
 }
 function syncEB(side,v){const n=Math.max(0,parseInt(v)||0);if(side==='left'){leftMin=n;const e=document.getElementById('eb-left');if(e)e.textContent=n;}else{rightMin=n;const e=document.getElementById('eb-right');if(e)e.textContent=n;}const t=document.getElementById('eb-total');if(t)t.textContent=leftMin+rightMin;}
 async function saveEditBreast(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  const stVal=document.getElementById('eb-start')?.value||fmtTime(r.start_time);
+  const newIso=r.date+'T'+stVal+':00+09:00';
   try{
-    await apiPatch(id,{left_min:leftMin,right_min:rightMin});
-    const r=records.find(x=>x.id===id);if(r){r.left_min=leftMin;r.right_min=rightMin;}
+    await apiPatch(id,{left_min:leftMin,right_min:rightMin,start_time:newIso});
+    if(r){r.left_min=leftMin;r.right_min=rightMin;r.start_time=newIso;}
     closeEditBreast();renderLogs();showToast('🤱 모유 수정됨');
   }catch(e){showToast('저장 실패');}
 }
 
 
-// ── TIME / ML ADJUSTERS ──
+// ── DIAPER EDIT MODAL ──
+function openEditDiaper(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  const cur=r.diaper_kind||'urine';
+  const st=fmtTime(r.start_time);
+  const html=`<div style="padding:20px 16px 32px">
+    <div class="drag-bar" style="margin-bottom:16px"></div>
+    <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:16px">💧 기저귀 수정</div>
+    <div class="time-adj" style="margin-bottom:16px">
+      <div class="time-adj-val" id="ed-start-display" style="color:var(--diaper)">${toAmPm(st)}</div>
+      <div class="time-adj-btns">
+        <button onclick="adjEDTime(-60)">-1H</button>
+        <button onclick="adjEDTime(-10)">-10분</button>
+        <button onclick="adjEDTime(-1)">-1분</button>
+        <button onclick="adjEDTime(1)">+1분</button>
+        <button onclick="adjEDTime(10)">+10분</button>
+        <button onclick="adjEDTime(60)">+1H</button>
+      </div>
+    </div>
+    <input type="hidden" id="ed-start" value="${st}">
+    <div style="font-size:12px;color:var(--txt2);font-weight:600;margin-bottom:10px">종류 선택</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+      <button id="edk-urine" onclick="selectEDK('urine')" style="padding:18px 4px;border-radius:14px;border:2.5px solid ${cur==='urine'?'var(--diaper)':'var(--border)'};background:${cur==='urine'?'var(--diaper-bg)':'var(--card)'};font-size:22px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:6px">
+        💧<span style="font-size:13px;font-weight:700;color:var(--diaper)">소변</span>
+      </button>
+      <button id="edk-stool" onclick="selectEDK('stool')" style="padding:18px 4px;border-radius:14px;border:2.5px solid ${cur==='stool'?'var(--diaper)':'var(--border)'};background:${cur==='stool'?'var(--diaper-bg)':'var(--card)'};font-size:22px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:6px">
+        💩<span style="font-size:13px;font-weight:700;color:var(--diaper)">대변</span>
+      </button>
+      <button id="edk-both" onclick="selectEDK('both')" style="padding:18px 4px;border-radius:14px;border:2.5px solid ${cur==='both'?'var(--diaper)':'var(--border)'};background:${cur==='both'?'var(--diaper-bg)':'var(--card)'};font-size:22px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:6px">
+        🔄<span style="font-size:13px;font-weight:700;color:var(--diaper)">둘다</span>
+      </button>
+    </div>
+    <button class="save-btn" onclick="saveEditDiaper('${id}')">저장</button>
+    <button class="cancel-btn" onclick="closeEditDiaper()">취소</button>
+  </div>`;
+  let overlay=document.getElementById('edit-diaper-overlay');
+  if(!overlay){overlay=document.createElement('div');overlay.id='edit-diaper-overlay';overlay.className='overlay';overlay.innerHTML='<div class="sheet" style="padding:0"></div>';document.body.appendChild(overlay);}
+  overlay.querySelector('.sheet').innerHTML=html;
+  window._editDK=cur;
+  overlay.classList.remove('hidden');
+}
+function closeEditDiaper(){const o=document.getElementById('edit-diaper-overlay');if(o)o.classList.add('hidden');}
+function selectEDK(v){
+  window._editDK=v;
+  ['urine','stool','both'].forEach(k=>{
+    const btn=document.getElementById('edk-'+k);
+    if(!btn)return;
+    btn.style.border='2.5px solid '+(k===v?'var(--diaper)':'var(--border)');
+    btn.style.background=k===v?'var(--diaper-bg)':'var(--card)';
+  });
+}
+function adjEDTime(diffMin){
+  const el=document.getElementById('ed-start');
+  const disp=document.getElementById('ed-start-display');
+  if(!el||!disp)return;
+  const [h,m]=el.value.split(':').map(Number);
+  const total=h*60+m+diffMin;
+  const nh=((Math.floor(total/60))%24+24)%24;
+  const nm=((total%60)+60)%60;
+  const newVal=pad(nh)+':'+pad(nm);
+  el.value=newVal;disp.textContent=toAmPm(newVal);
+}
+async function saveEditDiaper(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  const stVal=document.getElementById('ed-start')?.value||fmtTime(r.start_time);
+  const newIso=r.date+'T'+stVal+':00+09:00';
+  try{
+    await apiPatch(id,{diaper_kind:window._editDK,start_time:newIso});
+    r.diaper_kind=window._editDK;r.start_time=newIso;
+    closeEditDiaper();renderLogs();showToast('💧 기저귀 수정됨');
+  }catch(e){showToast('저장 실패');}
+}
+
+// ── SLEEP EDIT MODAL ──
+function openEditSleep(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  const isOngoing=!r.end_time;
+  const st=fmtTime(r.start_time);
+  const et=r.end_time?fmtTime(r.end_time):'';
+  const elapsedM=isOngoing?Math.floor((Date.now()-new Date(r.start_time))/60000):durMin(r.start_time,r.end_time);
+  const nowWakeBtn=isOngoing?`<button onclick="sleepWakeNow()" style="padding:8px 16px;border-radius:20px;border:2px solid var(--sleep);background:var(--sleep-bg);color:var(--sleep);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">지금 일어났어요!</button>`:'';
+  const html=`<div style="padding:20px 16px 32px">
+    <div class="drag-bar" style="margin-bottom:16px"></div>
+    <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:8px">😴 수면 수정</div>
+    ${isOngoing?`<div style="text-align:center;font-size:13px;color:var(--sleep);font-weight:600;margin-bottom:14px">⏱ ${durLabel(elapsedM)} 경과 중</div>`:`<div style="text-align:center;font-size:13px;color:var(--txt2);margin-bottom:14px">총 ${durLabel(elapsedM)}</div>`}
+    <div style="font-size:12px;color:var(--txt2);font-weight:600;margin-bottom:6px">시작 시간</div>
+    <div class="time-adj" style="margin-bottom:14px">
+      <div class="time-adj-val" id="es-start-display" style="color:var(--sleep)">${toAmPm(st)}</div>
+      <div class="time-adj-btns">
+        <button onclick="adjESTime('start',-60)">-1H</button>
+        <button onclick="adjESTime('start',-10)">-10분</button>
+        <button onclick="adjESTime('start',-1)">-1분</button>
+        <button onclick="adjESTime('start',1)">+1분</button>
+        <button onclick="adjESTime('start',10)">+10분</button>
+        <button onclick="adjESTime('start',60)">+1H</button>
+      </div>
+    </div>
+    <input type="hidden" id="es-start" value="${st}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:12px;color:var(--txt2);font-weight:600">종료 시간${isOngoing?' (선택)':''}</span>
+      ${nowWakeBtn}
+    </div>
+    <div class="time-adj" style="margin-bottom:14px;${isOngoing&&!et?'opacity:0.5':''}">
+      <div class="time-adj-val" id="es-end-display" style="color:var(--sleep)">${et?toAmPm(et):'--:--'}</div>
+      <div class="time-adj-btns">
+        <button onclick="adjESTime('end',-60)">-1H</button>
+        <button onclick="adjESTime('end',-10)">-10분</button>
+        <button onclick="adjESTime('end',-1)">-1분</button>
+        <button onclick="adjESTime('end',1)">+1분</button>
+        <button onclick="adjESTime('end',10)">+10분</button>
+        <button onclick="adjESTime('end',60)">+1H</button>
+      </div>
+    </div>
+    <input type="hidden" id="es-end" value="${et}">
+    <button class="save-btn" onclick="saveEditSleep('${id}')">저장</button>
+    <button class="cancel-btn" onclick="closeEditSleep()">취소</button>
+  </div>`;
+  let overlay=document.getElementById('edit-sleep-overlay');
+  if(!overlay){overlay=document.createElement('div');overlay.id='edit-sleep-overlay';overlay.className='overlay';overlay.innerHTML='<div class="sheet" style="padding:0"></div>';document.body.appendChild(overlay);}
+  overlay.querySelector('.sheet').innerHTML=html;
+  overlay.classList.remove('hidden');
+}
+function closeEditSleep(){const o=document.getElementById('edit-sleep-overlay');if(o)o.classList.add('hidden');}
+function sleepWakeNow(){
+  const now=new Date();
+  const nt=pad(now.getHours())+':'+pad(now.getMinutes());
+  const el=document.getElementById('es-end');
+  const disp=document.getElementById('es-end-display');
+  if(el)el.value=nt;
+  if(disp)disp.textContent=toAmPm(nt);
+  const adj=document.querySelector('#edit-sleep-overlay .time-adj:nth-of-type(2)');
+  if(adj)adj.style.opacity='1';
+}
+function adjESTime(which,diffMin){
+  const el=document.getElementById('es-'+which);
+  const disp=document.getElementById('es-'+which+'-display');
+  if(!el||!disp)return;
+  let cur=el.value;
+  if(!cur||cur===''){
+    const now=new Date();cur=pad(now.getHours())+':'+pad(now.getMinutes());
+  }
+  const [h,m]=cur.split(':').map(Number);
+  const total=h*60+m+diffMin;
+  const nh=((Math.floor(total/60))%24+24)%24;
+  const nm=((total%60)+60)%60;
+  const newVal=pad(nh)+':'+pad(nm);
+  el.value=newVal;disp.textContent=toAmPm(newVal);
+}
+async function saveEditSleep(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  const stVal=document.getElementById('es-start')?.value||fmtTime(r.start_time);
+  const etVal=document.getElementById('es-end')?.value||'';
+  const newStart=r.date+'T'+stVal+':00+09:00';
+  const patch={start_time:newStart};
+  if(etVal){
+    // 종료시간이 시작보다 이전이면 다음날로 처리
+    const startM=parseInt(stVal.split(':')[0])*60+parseInt(stVal.split(':')[1]);
+    const endM=parseInt(etVal.split(':')[0])*60+parseInt(etVal.split(':')[1]);
+    const endDate=endM<startM?new Date(new Date(r.date).getTime()+86400000):new Date(r.date);
+    patch.end_time=fmtDate(endDate)+'T'+etVal+':00+09:00';
+  } else {
+    patch.end_time=null;
+  }
+  try{
+    await apiPatch(id,patch);
+    r.start_time=patch.start_time;r.end_time=patch.end_time||null;
+    closeEditSleep();renderLogs();startSleepTimer();showToast('😴 수면 수정됨');
+  }catch(e){showToast('저장 실패');}
+}
 function toAmPm(hhmm){
   const [h,m]=hhmm.split(':').map(Number);
   const ampm=h<12?'오전':'오후';
