@@ -495,6 +495,24 @@ function syncSettingsUI(){
 function saveSetting(k,v){settings[k]=v;localStorage.setItem(k,v);}
 function openSettings(){document.getElementById('settings-modal').classList.remove('hidden');syncSettingsUI();}
 function closeSettings(){document.getElementById('settings-modal').classList.add('hidden');}
+function saveSettings(){
+  // 현재 입력값 모두 저장
+  const name=document.getElementById('s-name')?.value||'';
+  const birth=document.getElementById('s-birth')?.value||'';
+  const goal=document.getElementById('s-goal')?.value||'';
+  const warn=document.getElementById('s-warn')?.value||'';
+  const weight=document.getElementById('s-weight')?.value||'';
+  const avgFml=document.getElementById('s-avg-formula')?.value||'';
+  if(name) saveSetting('babyName',name);
+  if(birth) saveSetting('babyBirth',birth);
+  saveSetting('formulaGoal',goal);
+  saveSetting('feedWarnHour',warn||'3');
+  saveSetting('babyWeight',weight);
+  saveSetting('avgFormulaMl',avgFml);
+  renderHeader(); renderChips(); renderWarnings();
+  closeSettings();
+  showToast('✅ 설정이 저장됐어요!');
+}
 function toggleDark(){const on=document.body.classList.toggle('dark');saveSetting('darkMode',on?'1':'0');document.getElementById('toggle-dark').className='toggle'+(on?' on':'');}
 
 // ── PUSH NOTIFICATIONS ──
@@ -582,14 +600,14 @@ async function initRealtime(){
 function render(){renderHeader();renderLastBar();renderWarnings();renderDateNav();renderChips();renderLogs();startSleepTimer();if(currentTab==='stats')renderStats();if(currentTab==='growth')renderGrowth();if(currentTab==='hospital')renderHospital();}
 
 function renderHeader(){
-  const name=settings.babyName||'승준이';
+  const name=settings.babyName||'';
   const isToday=fmtDate(selDate)===todayStr();
   let sub=isToday?'오늘':fmtDate(selDate);
+  document.getElementById('hd-title').textContent='👶 '+(name||'아기')+' 기록';
   if(settings.babyBirth){
-    const diff=Math.floor((new Date()-new Date(settings.babyBirth))/(86400000));
-    document.getElementById('hd-title').textContent='👶 '+name;
+    const diff=Math.floor((new Date()-new Date(settings.babyBirth))/86400000);
     sub+=' · D+'+diff+'일';
-  } else document.getElementById('hd-title').textContent='👶 아기 기록';
+  }
   document.getElementById('hd-sub').textContent=sub;
 }
 
@@ -723,12 +741,23 @@ async function delRec(id){
 
 // ── MODAL ──
 function openModal(prefill){
+  const hideGrid = prefill?.type==='formula' || prefill?.type==='breast';
   const types=prefill?.type==='growth'?['growth']:prefill?.type==='hospital'?['hospital']:['sleep','formula','breast','diaper'];
   const allTypes=['sleep','formula','breast','diaper','growth','hospital'];
-  document.getElementById('type-grid').innerHTML=allTypes.filter(t=>types.includes(t)||types.length>1).map(t=>
-    `<button class="type-tile ${t}${t===(prefill?.type||'sleep')?' sel':''}" id="tt-${t}" onclick="selType('${t}')">`+
-    `<span class="em">${EMOJI[t]}</span><span class="nm">${LABEL[t]}</span></button>`
-  ).join('');
+  const tg=document.getElementById('type-grid');
+  if(hideGrid){
+    tg.innerHTML='';
+    tg.style.display='none';
+    // 모달 타이틀을 타입에 맞게
+    document.querySelector('#modal .sheet-title').textContent = prefill.type==='formula'?'🍼 분유 기록':'🤱 모유 기록';
+  } else {
+    tg.style.display='';
+    document.querySelector('#modal .sheet-title').textContent = '기록 추가';
+    tg.innerHTML=allTypes.filter(t=>types.includes(t)||types.length>1).map(t=>
+      `<button class="type-tile ${t}${t===(prefill?.type||'sleep')?' sel':''}" id="tt-${t}" onclick="selType('${t}')">`+
+      `<span class="em">${EMOJI[t]}</span><span class="nm">${LABEL[t]}</span></button>`
+    ).join('');
+  }
   document.getElementById('modal').classList.remove('hidden');
   if(!prefill||prefill.type!=='breast'){leftMin=0;rightMin=0;}
   else{leftMin=Number(prefill.left_min||0);rightMin=Number(prefill.right_min||0);}
