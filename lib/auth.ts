@@ -37,13 +37,13 @@ export const deleteAccount = async () => {
   await supabase.from('users').update({ deleted_at: new Date().toISOString() }).eq('id', user.id)
 
   // Auth 유저 삭제
-  await fetch(`${SUPA_URL}/auth/v1/admin/users/${user.id}`, {
-    method: 'DELETE',
+  await fetch(`${SUPA_URL}/functions/v1/delete-user`, {
+    method: 'POST',
     headers: {
-      apikey: SERVICE_ROLE_KEY,
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`
-    }
+    },
+    body: JSON.stringify({ userId: user.id })
   })
-
   await supabase.auth.signOut()
 }
