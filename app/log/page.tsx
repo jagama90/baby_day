@@ -1366,7 +1366,7 @@ const handleLogout = async () => {
                   <div style={{display:'flex',gap:'8px'}}>
                     <button onClick={async () => {
                       if (!newBabyName || !newBabyBirth || !currentUser) return
-                      const { data: baby } = await supabase.from('babies').insert({ name: newBabyName, birth_date: newBabyBirth }).select().single()
+                      const { data: baby } = await supabase.from('babies').insert({ name: newBabyName, birth_date: newBabyBirth, created_by: currentUser.id }).select().single()
                       if (baby) {
                         await supabase.from('baby_members').insert({ baby_id: baby.id, user_id: currentUser.id, role: newBabyRole })
                         const { data } = await supabase.from('baby_members').select('baby_id, role, babies(id, name, birth_date)').eq('user_id', currentUser.id)
