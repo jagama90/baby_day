@@ -504,7 +504,7 @@ useEffect(() => {
         <div class="stat-row"><span class="stat-lbl">🌙 낮잠</span><span class="stat-val" style="color:var(--sleep)">${durLabel(napMin)} · ${napRecs.length}회</span></div>
         <div class="stat-row"><span class="stat-lbl">⭐ 밤잠</span><span class="stat-val" style="color:var(--sleep)">${durLabel(nightMin)} · ${nightRecs.length}회</span></div>
         <div class="stat-bar-wrap"><div style="font-size:11px;color:var(--txt2);margin-bottom:4px">낮잠 vs 밤잠</div>
-          <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${totalSleep ? Math.round(napMin / totalSleep * 100) : 0}%;background:var(--sleep)"></div></div>
+          <div class="stat-bar-bg" style="background:var(--sleep);opacity:.9;border-radius:20px;height:8px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${totalSleep ? Math.round(napMin / totalSleep * 100) : 0}%;background:var(--sleep);opacity:.4;border-radius:20px"></div></div>
           <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-top:3px"><span>낮잠 ${totalSleep ? Math.round(napMin / totalSleep * 100) : 0}%</span><span>밤잠 ${totalSleep ? Math.round(nightMin / totalSleep * 100) : 0}%</span></div>
         </div>` : '<div style="padding:14px 16px;font-size:13px;color:var(--txt3)">수면 기록 없음</div>'}
       </div>
