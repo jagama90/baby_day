@@ -37,7 +37,7 @@ export const deleteAccount = async () => {
   await supabase.from('users').update({ deleted_at: new Date().toISOString() }).eq('id', user.id)
 
   // Auth 유저 삭제
-  await fetch(`${SUPA_URL}/functions/v1/delete-user`, {
+  await fetch(`${SUPA_URL}/functions/v1/hyper-service`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
