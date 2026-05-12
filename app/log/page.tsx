@@ -1581,6 +1581,14 @@ const handleLogout = async () => {
 </button>
             <button className="save-btn" style={{ marginTop: '8px' }} onClick={saveSettings}>저장</button>
             <button className="cancel-btn" onClick={() => setShowSettings(false)}>닫기</button>
+            <button onClick={async () => {
+              if (!confirm('정말 탈퇴하시겠어요? 모든 데이터가 삭제됩니다.')) return
+              const { deleteAccount } = await import('@/lib/auth')
+              await deleteAccount()
+              router.push('/login')
+            }} style={{width:'100%',padding:'8px',background:'none',border:'none',color:'var(--txt3)',fontSize:'12px',cursor:'pointer',fontFamily:'inherit',marginTop:'4px'}}>
+              회원탈퇴
+            </button>
           </div>
         </div>
       )}
