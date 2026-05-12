@@ -89,6 +89,7 @@ type BabyRecord = {
   memo?: string;
   recorded_by_name?: string;
   recorded_by_role?: string;
+  user_id?: string;
 };
 
 type Settings = {
@@ -184,6 +185,7 @@ function LogPageInner() {
   const [newBabyBirth, setNewBabyBirth] = useState('')
   const [newBabyRole, setNewBabyRole] = useState('dad')
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [memberRoleMap, setMemberRoleMap] = useState<Record<string, string>>({})
   const [patternMsgs, setPatternMsgs] = useState<string[]>([]);
   const [patternIdx, setPatternIdx] = useState(0);
   const [patternVisible, setPatternVisible] = useState(true);
@@ -278,8 +280,18 @@ useEffect(() => {
   supabase.auth.getUser().then(({ data: { user } }) => {
     setCurrentUser(user)
     if (user) {
+      const params = new URLSearchParams(window.location.search)
+      const babyId = params.get('babyId')
       supabase.from('baby_members').select('baby_id, role, babies(id, name, birth_date)').eq('user_id', user.id)
         .then(({ data }) => setDrawerBabies(data || []))
+      if (babyId) {
+        supabase.from('baby_members').select('user_id, role').eq('baby_id', babyId)
+          .then(({ data }) => {
+            const map: Record<string, string> = {}
+            data?.forEach((m: any) => { map[m.user_id] = m.role })
+            setMemberRoleMap(map)
+          })
+      }
     }
   })
 }, [loadSettings, loadAll]);
@@ -651,7 +663,7 @@ useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const babyId = params.get('babyId')
     if (!babyId) { setShowDrawer(true); setShowAddBaby(true); return; }
-    const rec: Record<string, unknown> = { type, date: nowDs, start_time: iso, baby_id: babyId };
+    const rec: Record<string, unknown> = { type, date: nowDs, start_time: iso, baby_id: babyId, user_id: currentUser?.id };
     if (type === 'sleep') rec.sleep_kind = autoSleepKind(now);
     if (type === 'diaper') rec.diaper_kind = diaperKind || 'urine';
     try { await apiPost(rec); setSelDate(now); showToast(EMOJI[type] + ' ' + LABEL[type] + ' 기록됨'); await loadAll(); } catch (e: unknown) { showToast('오류: ' + (e instanceof Error ? e.message : '')); }
@@ -684,7 +696,7 @@ useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const babyId = params.get('babyId')
     if (!babyId) { setShowModal(false); setShowDrawer(true); setShowAddBaby(true); return; }
-    let rec: Record<string, unknown> = { type: modalType, baby_id: babyId };
+    let rec: Record<string, unknown> = { type: modalType, baby_id: babyId, user_id: currentUser?.id };
     if (modalType === 'sleep') {
       rec.date = nowDs; rec.start_time = nowDs + 'T' + modalStartTime + ':00+09:00'; rec.sleep_kind = sleepKind;
       if (modalEndTime) rec.end_time = nowDs + 'T' + modalEndTime + ':00+09:00';
@@ -1152,16 +1164,24 @@ const handleLogout = async () => {
                   } : undefined}>
                   <div className={`li-icon ${r.type}`}>{EMOJI[r.type]}</div>
                   <div className="li-body">
-                    <div className={`li-type ${r.type}`}>{LABEL[r.type]}{r.sleep_kind ? ' · ' + (r.sleep_kind === 'nap' ? '낮잠' : '밤잠') : ''}</div>
-                    <div className="li-detail">{detail(r)}</div>
-                    {r.type === 'sleep' && !r.end_time && <div className="sleep-timer">{sleepTimerMap[r.id] || '⏱ 진행 중...'}</div>}
-                    {r.memo && <div className="memo-text">📝 {r.memo}</div>}
-                    {r.recorded_by_name && (
-                      <div style={{fontSize:'11px',color:'rgba(0,0,0,0.22)',marginTop:'4px',textAlign:'center'}}>
-                        {({'mom':'엄마','dad':'아빠','parent':'보호자','guardian':'보호자'} as Record<string,string>)[r.recorded_by_role||''] || r.recorded_by_name}가 기록함
-                      </div>
-                    )}
-                  </div>
+                  <div className={`li-type ${r.type}`}>{LABEL[r.type]}{r.sleep_kind ? ' · ' + (r.sleep_kind === 'nap' ? '낮잠' : '밤잠') : ''}</div>
+                  {r.type === 'formula'
+                    ? <div style={{fontSize:'18px',fontWeight:800,color:'var(--formula)',marginTop:'2px'}}>{r.ml}ml</div>
+                    : <div className="li-detail">{detail(r)}</div>
+                  }
+                  {r.type === 'sleep' && !r.end_time && <div className="sleep-timer">{sleepTimerMap[r.id] || '⏱ 진행 중...'}</div>}
+                  {r.memo && <div className="memo-text">📝 {r.memo}</div>}
+                  {r.user_id && memberRoleMap[r.user_id] && (() => {
+                    const role = memberRoleMap[r.user_id!]
+                    const isMom = role === 'mom' || role === '엄마'
+                    const isDad = role === 'dad' || role === '아빠'
+                    const label = isMom ? '엄마 👩' : isDad ? '아빠 👨' : '보호자'
+                    const color = isMom ? 'rgba(232,102,122,0.7)' : isDad ? 'rgba(91,123,255,0.7)' : 'rgba(107,114,128,0.6)'
+                    return (
+                      <div style={{fontSize:'11px',color,marginTop:'3px',fontWeight:500}}>{label}</div>
+                    )
+                  })()}
+                </div>
                   <div className="li-right">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                       <span className="li-time">{fmtTime(r.start_time)}</span>
