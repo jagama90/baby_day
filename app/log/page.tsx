@@ -651,7 +651,7 @@ useEffect(() => {
     }
     const params = new URLSearchParams(window.location.search)
     const babyId = params.get('babyId')
-    if (!babyId) { showToast('먼저 아기를 등록해주세요'); return; }
+    if (!babyId) { setShowDrawer(true); setShowAddBaby(true); return; }
     const rec: Record<string, unknown> = { type, date: nowDs, start_time: iso, baby_id: babyId };
     if (type === 'sleep') rec.sleep_kind = autoSleepKind(now);
     if (type === 'diaper') rec.diaper_kind = diaperKind || 'urine';
@@ -681,7 +681,7 @@ useEffect(() => {
     const nowDs = ds;
     const params = new URLSearchParams(window.location.search)
     const babyId = params.get('babyId')
-    if (!babyId) { showToast('먼저 아기를 등록해주세요'); return; }
+    if (!babyId) { setShowModal(false); setShowDrawer(true); setShowAddBaby(true); return; }
     let rec: Record<string, unknown> = { type: modalType, baby_id: babyId };
     if (modalType === 'sleep') {
       rec.date = nowDs; rec.start_time = nowDs + 'T' + modalStartTime + ':00+09:00'; rec.sleep_kind = sleepKind;
@@ -1362,6 +1362,7 @@ const handleLogout = async () => {
                   <input placeholder="아기 이름" value={newBabyName} onChange={e => setNewBabyName(e.target.value)}
                     style={{width:'100%',padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'8px',fontSize:'14px',marginBottom:'8px',fontFamily:'inherit',background:'var(--card)',color:'var(--txt)',outline:'none',boxSizing:'border-box'}} />
                   <input type="date" value={newBabyBirth} onChange={e => setNewBabyBirth(e.target.value)}
+                    placeholder="YYYY-MM-DD"
                     style={{width:'100%',padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'8px',fontSize:'14px',marginBottom:'8px',fontFamily:'inherit',background:'var(--card)',color:'var(--txt)',outline:'none',boxSizing:'border-box'}} />
                   <select value={newBabyRole} onChange={e => setNewBabyRole(e.target.value)}
                     style={{width:'100%',padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'8px',fontSize:'14px',marginBottom:'12px',fontFamily:'inherit',background:'var(--card)',color:'var(--txt)',outline:'none',boxSizing:'border-box'}}>
@@ -1392,9 +1393,22 @@ const handleLogout = async () => {
 
             {/* 초대코드 */}
             <div style={{padding:'16px'}}>
-              <button onClick={() => { router.push('/invite'); setShowDrawer(false); }} style={{width:'100%',padding:'12px',border:'1.5px solid var(--border)',borderRadius:'12px',background:'none',color:'var(--txt2)',fontSize:'13px',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
-                🔗 초대코드 입력 / 생성
-              </button>
+              <div style={{display:'flex',gap:'8px'}}>
+                <button onClick={async () => {
+                  const params = new URLSearchParams(window.location.search)
+                  const babyId = params.get('babyId')
+                  if (!babyId || !currentUser) return
+                  const code = Math.random().toString(36).slice(2,8).toUpperCase()
+                  await supabase.from('invite_codes').insert({ code, baby_id: babyId, created_by: currentUser.id, expires_at: new Date(Date.now() + 7*24*60*60*1000).toISOString() })
+                  showToast('초대코드: ' + code)
+                  setShowDrawer(false)
+                }} style={{flex:1,padding:'12px',border:'1.5px solid var(--border)',borderRadius:'12px',background:'none',color:'var(--primary)',fontSize:'13px',cursor:'pointer',fontFamily:'inherit',textAlign:'center',fontWeight:600}}>
+                  🔗 초대코드 생성
+                </button>
+                <button onClick={() => { router.push('/invite'); setShowDrawer(false); }} style={{flex:1,padding:'12px',border:'1.5px solid var(--border)',borderRadius:'12px',background:'none',color:'var(--txt2)',fontSize:'13px',cursor:'pointer',fontFamily:'inherit',textAlign:'center'}}>
+                  🔑 초대코드 입력
+                </button>
+              </div>
             </div>
           </div>
           {/* 오른쪽 dimmed 영역 */}
