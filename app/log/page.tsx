@@ -448,17 +448,17 @@ useEffect(() => {
 
     setStatsContent('<div style="padding:20px;text-align:center;color:var(--txt3);font-size:13px">✨ AI 요약 생성 중...</div>');
 
-    let aiText = '';
-    try {
-      const prompt = statsPeriod === 'day'
-        ? `아기 육아 기록 AI 요약. 이름: ${name}. 날짜: ${label}. 수면 총 ${durLabel(totalSleep)} (낮잠 ${durLabel(napMin)}, 밤잠 ${durLabel(nightMin)}, ${sleepRecs.length}회), 분유 ${totalFormula}ml (${formulaRecs.length}회, 평균 ${avgFormula}ml), 모유 총 ${totalBreastMin}분 (${breastRecs.length}회), 기저귀 소변 ${urineCount}회 대변 ${stoolCount}회. 2~3문장으로 따뜻하게 요약. "${name}는" 시작. 한국어.`
-        : `아기 육아 주간 요약. 이름: ${name}. 기간: ${label}. 수면 총 ${durLabel(totalSleep)} (${sleepRecs.length}회), 분유 총 ${totalFormula}ml (${formulaRecs.length}회), 모유 총 ${totalBreastMin}분 (${breastRecs.length}회), 기저귀 소변 ${urineCount}회 대변 ${stoolCount}회. 2~3문장 이번 주 패턴 요약. "이번 주 ${name}는" 시작. 한국어.`;
-      const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 300, messages: [{ role: 'user', content: prompt }] }) });
-      const data = await res.json();
-      aiText = data.content?.[0]?.text || '';
-    } catch (_) {}
-
     const breastMl = breastToFormulaMl(totalBreastMin, settings.babyBirth);
+    let aiText = '';
+    if (statsPeriod === 'day') {
+      const parts = [];
+      if (totalFormula + breastMl > 0) parts.push(`수유량은 평소와 비슷한 흐름이에요`);  if (totalFormula + breastMl > 0) parts.push(`수유량은 평소와 비슷한 흐름이에요`);
+    if (napMin > 0) parts.push(`낮잠은 ${durLabel(napMin)} 잤어요`);
+    if (diaperRecs.length > 0) parts.push(`기저귀는 ${diaperRecs.length}회 교체했어요`);
+    aiText = parts.length ? `${name}는 오늘 ${parts.join(', ')}. 오늘 하루도 수고했어요 💛` : '';
+    } else {
+      aiText = totalSleep ? `이번 주 ${name}는 총 ${durLabel(totalSleep)} 잠을 잤고, 분유는 ${totalFormula}ml 먹었어요. 잘 자라고 있어요 💛` : '';
+    }
 
     let weekHtml = '';
     if (statsPeriod === 'week' && dates) {
@@ -649,7 +649,10 @@ useEffect(() => {
         return;
       }
     }
-    const rec: Record<string, unknown> = { type, date: nowDs, start_time: iso };
+    const params = new URLSearchParams(window.location.search)
+    const babyId = params.get('babyId')
+    if (!babyId) { showToast('먼저 아기를 등록해주세요'); return; }
+    const rec: Record<string, unknown> = { type, date: nowDs, start_time: iso, baby_id: babyId };
     if (type === 'sleep') rec.sleep_kind = autoSleepKind(now);
     if (type === 'diaper') rec.diaper_kind = diaperKind || 'urine';
     try { await apiPost(rec); setSelDate(now); showToast(EMOJI[type] + ' ' + LABEL[type] + ' 기록됨'); await loadAll(); } catch (e: unknown) { showToast('오류: ' + (e instanceof Error ? e.message : '')); }
@@ -676,7 +679,10 @@ useEffect(() => {
   // ── SAVE REC ──
   const saveRec = async () => {
     const nowDs = ds;
-    let rec: Record<string, unknown> = { type: modalType };
+    const params = new URLSearchParams(window.location.search)
+    const babyId = params.get('babyId')
+    if (!babyId) { showToast('먼저 아기를 등록해주세요'); return; }
+    let rec: Record<string, unknown> = { type: modalType, baby_id: babyId };
     if (modalType === 'sleep') {
       rec.date = nowDs; rec.start_time = nowDs + 'T' + modalStartTime + ':00+09:00'; rec.sleep_kind = sleepKind;
       if (modalEndTime) rec.end_time = nowDs + 'T' + modalEndTime + ':00+09:00';
