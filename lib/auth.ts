@@ -49,5 +49,6 @@ export const deleteAccount = async () => {
   })
   const result = await res.json()
   console.log('탈퇴 결과:', result)
+  localStorage.clear()
   await supabase.auth.signOut()
 }
