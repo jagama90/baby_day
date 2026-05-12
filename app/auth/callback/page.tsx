@@ -30,7 +30,7 @@ export default function AuthCallback() {
           provider: user.app_metadata.provider,
           nickname: user.user_metadata.name || user.user_metadata.full_name
         })
-        router.push('/onboarding')
+        router.push('/log')
       } else {
         const { data: babies } = await supabase
           .from('baby_members')
