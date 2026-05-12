@@ -37,13 +37,17 @@ export const deleteAccount = async () => {
   await supabase.from('users').update({ deleted_at: new Date().toISOString() }).eq('id', user.id)
 
   // Auth 유저 삭제
-  await fetch(`${SUPA_URL}/functions/v1/hyper-service`, {
+  const body = JSON.stringify({ userId: user.id })
+  console.log('탈퇴 요청 body:', body)
+  const res = await fetch(`${SUPA_URL}/functions/v1/hyper-service`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`
     },
-    body: JSON.stringify({ userId: user.id })
+    body
   })
+  const result = await res.json()
+  console.log('탈퇴 결과:', result)
   await supabase.auth.signOut()
 }
