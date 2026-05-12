@@ -109,7 +109,7 @@ function detail(r: BabyRecord): string {
   if (r.type === 'sleep') { const tag = r.sleep_kind === 'nap' ? '낮잠' : '밤잠'; if (r.end_time) return tag + ' · ' + durLabel(durMin(r.start_time, r.end_time)); return tag + ' · 진행 중 ⏱'; }
   if (r.type === 'formula') return (r.ml || 0) + 'ml';
   if (r.type === 'breast') { const p = []; if (r.left_min) p.push('왼쪽 ' + r.left_min + '분'); if (r.right_min) p.push('오른쪽 ' + r.right_min + '분'); const t = (r.left_min || 0) + (r.right_min || 0); if (t) p.push('총 ' + t + '분'); return p.join(' · ') || '모유'; }
-  if (r.type === 'diaper') return ({ urine: '소변', stool: '대변', both: '소변+대변' } as Record<string, string>)[r.diaper_kind || ''] || '기저귀';
+  if (r.type === 'diaper') return ({ urine: '💧 소변', stool: '💩 대변', both: '🔄 소변+대변' } as Record<string, string>)[r.diaper_kind || ''] || '기저귀';
   if (r.type === 'growth') { const p = []; if (r.weight) p.push(r.weight + 'kg'); if (r.height) p.push(r.height + 'cm'); if (r.head) p.push('두위 ' + r.head + 'cm'); return p.join(' · ') || '성장 기록'; }
   if (r.type === 'hospital') return r.hospital_name || (r.memo || '병원 방문');
   if (r.type === 'bath') return r.memo || '목욕';
@@ -608,8 +608,7 @@ useEffect(() => {
   const ds = fmtDate(selDate);
   const dayRecs = records.filter(r => r.date === ds);
   const logRecs = dayRecs.filter(r => r.type !== 'growth' && r.type !== 'hospital').sort((a, b) => {
-    const ta = a.start_time, tb = b.start_time;
-    return tb > ta ? 1 : -1;
+    return new Date(b.start_time).getTime() - new Date(a.start_time).getTime();
   });
   const feeds = [...records].filter(r => r.type === 'formula' || r.type === 'breast').sort((a, b) => b.start_time > a.start_time ? 1 : -1);
   const lastFeed = feeds[0];
@@ -1085,7 +1084,7 @@ const handleLogout = async () => {
           <div className="qb" onClick={() => openModal('breast')}><div className="qb-icon breast">🤱</div><div className="qb-name">모유</div></div>
           <div className="qb" onClick={() => quickAdd('diaper', 'urine')}><div className="qb-icon diaper">💧</div><div className="qb-name">소변</div></div>
           <div className="qb" onClick={() => quickAdd('diaper', 'stool')}><div className="qb-icon diaper">💩</div><div className="qb-name">대변</div></div>
-          <div className="qb" onClick={() => quickAdd('diaper', 'both')}><div className="qb-icon diaper">🔄</div><div className="qb-name">둘다</div></div>
+          <div className="qb" onClick={() => quickAdd('diaper', 'both')}><div className="qb-icon diaper">🚿</div><div className="qb-name">둘다</div></div>
           <div className="qb" onClick={() => quickAdd('bath')}><div className="qb-icon bath">🛁</div><div className="qb-name">목욕</div></div>
         </div>
 
