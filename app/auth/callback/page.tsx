@@ -43,7 +43,7 @@ export default function AuthCallback() {
         if (babies && babies.length > 0) {
           router.push(`/log?babyId=${babies[0].baby_id}`)
         } else {
-          router.push('/baby')
+          router.push('/log')
         }
       }
     }
