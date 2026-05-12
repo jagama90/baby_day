@@ -7,21 +7,15 @@ export default function AuthCallback() {
   const router = useRouter()
 
   useEffect(() => {
-  const handleCallback = async () => {
-    // 카카오/구글 OAuth code → session 교환
-    const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(
-      window.location.search
-    ).catch(() => ({ data: { session: null }, error: true }))
-    
-    // exchangeCodeForSession 실패 시 기존 세션 확인 (구글 등)
-    const finalSession = session ?? (await supabase.auth.getSession()).data.session
-    
-    if (!finalSession) {
-      router.push('/login')
-      return
-    }
+    const handleCallback = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error || !session) {
+        router.push('/login')
+        return
+      }
 
-      const user = finalSession.user
+      const user = session.user
 
       const { data: existing } = await supabase
         .from('users')
@@ -38,7 +32,6 @@ export default function AuthCallback() {
         })
         router.push('/onboarding')
       } else {
-        // 기존 유저 → 아기 있는지 확인
         const { data: babies } = await supabase
           .from('baby_members')
           .select('baby_id')
