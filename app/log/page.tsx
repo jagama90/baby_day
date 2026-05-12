@@ -1084,7 +1084,7 @@ const handleLogout = async () => {
 
         {/* Feed Warning */}
         {showWarn && (
-          <div className="warn-banner feed">
+          <div className="warn-banner feed" style={{marginBottom:'8px'}}>
             ⚠️ 마지막 수유 {Math.floor(feedHoursAgo)}시간 {Math.floor((feedHoursAgo % 1) * 60)}분 경과 — 수유 시간이에요!
           </div>
         )}
@@ -1229,7 +1229,7 @@ const handleLogout = async () => {
           const summary = summaryParts.length ? '오늘은 ' + summaryParts.join(', ') + '.' : '오늘 흐름은 평소와 비슷한 편이에요.';
 
           return (
-            <div style={{margin:'12px 16px 0',background:'var(--card)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+            <div style={{margin:'12px 16px 16px',background:'var(--card)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
               <div style={{padding:'14px 16px 10px',borderBottom:'1px solid var(--border)'}}>
                 <div style={{fontSize:'15px',fontWeight:700}}>📋 오늘 하루 요약</div>
                 <div style={{fontSize:'13px',color:'var(--txt2)',marginTop:'6px',lineHeight:1.6}}>{summary}</div>
