@@ -259,7 +259,10 @@ useEffect(() => {
   const loadAll = useCallback(async (s?: Settings) => {
     setSyncState('loading'); setSyncTxt('불러오는 중...');
     try {
-      const data = await apiGet('baby_logs?order=start_time.desc&limit=1000');
+      const params = new URLSearchParams(window.location.search)
+      const babyId = params.get('babyId')
+      if (!babyId) { setSyncState('on'); setSyncTxt('실시간 동기화 중'); setRecords([]); return; }
+      const data = await apiGet('baby_logs?order=start_time.desc&limit=1000')
       setRecords(data);
       setSyncState('on'); setSyncTxt('실시간 동기화 중');
     } catch (e: unknown) {

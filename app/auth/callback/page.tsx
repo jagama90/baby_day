@@ -17,11 +17,12 @@ export default function AuthCallback() {
 
       const user = session.user
 
-      const { data: existing } = await supabase
+      const { data: existingArr } = await supabase
         .from('users')
         .select('id')
         .eq('id', user.id)
-        .single()
+
+      const existing = existingArr && existingArr.length > 0 ? existingArr[0] : null
 
       if (!existing) {
           const { error: insertError } = await supabase.from('users').insert({
