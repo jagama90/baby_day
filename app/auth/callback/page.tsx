@@ -24,14 +24,15 @@ export default function AuthCallback() {
         .single()
 
       if (!existing) {
-        await supabase.from('users').insert({
-          id: user.id,
-          email: user.email,
-          provider: user.app_metadata.provider,
-          nickname: user.user_metadata.name || user.user_metadata.full_name
-        })
-        router.push('/log')
-      } else {
+          const { error: insertError } = await supabase.from('users').insert({
+            id: user.id,
+            email: user.email,
+            provider: user.app_metadata.provider,
+            nickname: user.user_metadata.name || user.user_metadata.full_name
+          })
+          console.log('insert error:', insertError)
+          router.push('/log')
+        } else {
         const { data: babies } = await supabase
           .from('baby_members')
           .select('baby_id')
