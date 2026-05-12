@@ -3,7 +3,13 @@ import { supabase } from './supabase'
 export const signInWithKakao = async () => {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'kakao',
-    options: { redirectTo: `${window.location.origin}/auth/callback` }
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+      skipBrowserRedirect: false,
+      queryParams: {
+        response_type: 'code',
+      }
+    }
   })
   if (error) console.error(error)
 }

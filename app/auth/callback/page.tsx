@@ -8,12 +8,18 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession()
-      
-      if (error || !session) {
-        router.push('/login')
-        return
-      }
+    // PKCE code 교환 시도
+    const code = new URLSearchParams(window.location.search).get('code')
+    if (code) {
+      await supabase.auth.exchangeCodeForSession(code)
+    }
+
+    const { data: { session }, error } = await supabase.auth.getSession()
+    
+    if (error || !session) {
+      router.push('/login')
+      return
+    }
 
       const user = session.user
 
