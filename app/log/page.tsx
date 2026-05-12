@@ -262,7 +262,7 @@ useEffect(() => {
       const params = new URLSearchParams(window.location.search)
       const babyId = params.get('babyId')
       if (!babyId) { setSyncState('on'); setSyncTxt('실시간 동기화 중'); setRecords([]); return; }
-      const data = await apiGet('baby_logs?order=start_time.desc&limit=1000')
+      const data = await apiGet(`baby_logs?baby_id=eq.${babyId}&order=start_time.desc&limit=1000`)
       setRecords(data);
       setSyncState('on'); setSyncTxt('실시간 동기화 중');
     } catch (e: unknown) {
@@ -452,7 +452,7 @@ useEffect(() => {
     let aiText = '';
     if (statsPeriod === 'day') {
       const parts = [];
-      if (totalFormula + breastMl > 0) parts.push(`수유량은 평소와 비슷한 흐름이에요`);  if (totalFormula + breastMl > 0) parts.push(`수유량은 평소와 비슷한 흐름이에요`);
+      if (totalFormula + breastMl > 0) parts.push(`수유량은 평소와 비슷한 흐름이에요`);
     if (napMin > 0) parts.push(`낮잠은 ${durLabel(napMin)} 잤어요`);
     if (diaperRecs.length > 0) parts.push(`기저귀는 ${diaperRecs.length}회 교체했어요`);
     aiText = parts.length ? `${name}는 오늘 ${parts.join(', ')}. 오늘 하루도 수고했어요 💛` : '';
@@ -1175,111 +1175,107 @@ const handleLogout = async () => {
 
       {/* STATS PAGE */}
       <div className={`page${currentTab === 'stats' ? ' show' : ''}`} id="page-stats">
-        <div className="period-nav">
-          <div className="period-tabs">
-            <button className={`period-tab${statsPeriod === 'day' ? ' sel' : ''}`} onClick={() => { setStatsPeriod('day'); setStatsOffset(0); }}>일</button>
-            <button className={`period-tab${statsPeriod === 'week' ? ' sel' : ''}`} onClick={() => { setStatsPeriod('week'); setStatsOffset(0); }}>주</button>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <button className="period-btn" onClick={() => setStatsOffset(p => p - 1)}>‹</button>
-            <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '120px', textAlign: 'center' }}>{periodLabel}</span>
-            <button className="period-btn" onClick={() => setStatsOffset(p => p + 1)}>›</button>
-          </div>
+  <div className="period-nav">
+    <div className="period-tabs">
+      <button className={`period-tab${statsPeriod === 'day' ? ' sel' : ''}`} onClick={() => { setStatsPeriod('day'); setStatsOffset(0); }}>일</button>
+      <button className={`period-tab${statsPeriod === 'week' ? ' sel' : ''}`} onClick={() => { setStatsPeriod('week'); setStatsOffset(0); }}>주</button>
+    </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <button className="period-btn" onClick={() => setStatsOffset(p => p - 1)}>‹</button>
+      <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '120px', textAlign: 'center' }}>{periodLabel}</span>
+      <button className="period-btn" onClick={() => setStatsOffset(p => p + 1)}>›</button>
+    </div>
+  </div>
+
+  {/* 하루 요약 리포트 */}
+  {statsPeriod === 'day' && (() => {
+    const todayDs = fmtDate(new Date(new Date().setDate(new Date().getDate() + statsOffset)));
+    const todayRecs = records.filter(r => r.date === todayDs);
+    const days7ago = Date.now() - 7 * 86400000;
+    const week = records.filter(r => new Date(r.start_time).getTime() > days7ago && r.date !== todayDs);
+
+    if (todayRecs.length < 3) return (
+      <div style={{margin:'12px 16px 0',background:'var(--card)',borderRadius:'var(--r)',padding:'16px',boxShadow:'0 1px 4px rgba(0,0,0,.06)',fontSize:'13px',color:'var(--txt3)',textAlign:'center'}}>
+        🌱 기록이 조금 더 쌓이면 요약을 보여드릴게요
+      </div>
+    );
+
+    // 수유
+    const todayFeedMl = todayRecs.filter(r=>r.type==='formula').reduce((s,r)=>s+Number(r.ml||0),0)
+      + breastToFormulaMl(todayRecs.filter(r=>r.type==='breast').reduce((s,r)=>s+(Number(r.left_min||0)+Number(r.right_min||0)),0), settings.babyBirth);
+    const todayFeedCnt = todayRecs.filter(r=>r.type==='formula'||r.type==='breast').length;
+    const weekFeedDays: Record<string,number> = {};
+    week.filter(r=>r.type==='formula'||r.type==='breast').forEach(r=>{ weekFeedDays[r.date]=(weekFeedDays[r.date]||0)+(r.type==='formula'?Number(r.ml||0):breastToFormulaMl((Number(r.left_min||0)+Number(r.right_min||0)),settings.babyBirth)); });
+    const weekFeedAvg = Object.keys(weekFeedDays).length ? Object.values(weekFeedDays).reduce((s,v)=>s+v,0)/Object.keys(weekFeedDays).length : 0;
+    const feedEval = weekFeedAvg ? (todayFeedMl>=weekFeedAvg*1.2?'많은 편이에요':todayFeedMl<=weekFeedAvg*0.8?'적은 편이에요':'평소와 비슷한 편이에요') : '';
+
+    // 낮잠
+    const todayNaps = todayRecs.filter(r=>r.type==='sleep'&&r.sleep_kind==='nap'&&r.end_time);
+    const todayNapMin = todayNaps.reduce((s,r)=>s+durMin(r.start_time,r.end_time!),0);
+    const weekNapDays: Record<string,number> = {};
+    week.filter(r=>r.type==='sleep'&&r.sleep_kind==='nap'&&r.end_time).forEach(r=>{ weekNapDays[r.date]=(weekNapDays[r.date]||0)+durMin(r.start_time,r.end_time!); });
+    const weekNapAvg = Object.keys(weekNapDays).length ? Object.values(weekNapDays).reduce((s,v)=>s+v,0)/Object.keys(weekNapDays).length : 0;
+    const napEval = weekNapAvg ? (todayNapMin>=weekNapAvg*1.2?'긴 편이에요':todayNapMin<=weekNapAvg*0.8?'짧은 편이에요':'평소와 비슷한 편이에요') : '';
+
+    // 각성시간
+    const napsSorted = [...records.filter(r=>r.type==='sleep'&&r.sleep_kind==='nap'&&r.end_time&&new Date(r.start_time).getTime()>days7ago)].sort((a,b)=>a.end_time!>b.end_time!?1:-1);
+    const wakeGaps: number[] = [];
+    for (let i=0;i<napsSorted.length-1;i++) {
+      const wake=new Date(napsSorted[i].end_time!).getTime();
+      const next=records.filter(r=>r.type==='sleep'&&new Date(r.start_time).getTime()>wake).sort((a,b)=>a.start_time>b.start_time?1:-1)[0];
+      if(next){const g=(new Date(next.start_time).getTime()-wake)/60000;if(g>=30&&g<=240)wakeGaps.push(g);}
+    }
+    const wakeMedian = wakeGaps.length>=3?[...wakeGaps].sort((a,b)=>a-b)[Math.floor(wakeGaps.length/2)]:0;
+    const lastNap = napsSorted[napsSorted.length-1];
+    let nextSleepLabel = '';
+    if(lastNap&&wakeMedian){const pred=new Date(new Date(lastNap.end_time!).getTime()+wakeMedian*60000);nextSleepLabel=pad(pred.getHours())+':'+pad(pred.getMinutes())+' 전후';}
+
+    // 밤잠 추정
+    const yesterday = fmtDate(new Date(Date.now()-86400000));
+    const nightCands = records.filter(r=>r.type==='sleep'&&r.date===yesterday&&new Date(r.start_time).getHours()>=19&&r.end_time);
+    nightCands.sort((a,b)=>durMin(a.start_time,a.end_time!)>durMin(b.start_time,b.end_time!)?-1:1);
+    const nightSleep = nightCands[0]&&durMin(nightCands[0].start_time,nightCands[0].end_time!)>=120?nightCands[0]:null;
+
+    // 기저귀
+    const todayDiaperCnt = todayRecs.filter(r=>r.type==='diaper').length;
+    const weekDiaperDays: Record<string,number> = {};
+    week.filter(r=>r.type==='diaper').forEach(r=>{weekDiaperDays[r.date]=(weekDiaperDays[r.date]||0)+1;});
+    const weekDiaperAvg = Object.keys(weekDiaperDays).length?Object.values(weekDiaperDays).reduce((s,v)=>s+v,0)/Object.keys(weekDiaperDays).length:0;
+    const diaperEval = weekDiaperAvg?(todayDiaperCnt>=weekDiaperAvg*1.2?'많은 편이에요':todayDiaperCnt<=weekDiaperAvg*0.8?'적은 편이에요':'평소와 비슷한 편이에요'):'';
+
+    // 한 줄 요약
+    const summaryParts=[];
+    if(feedEval&&feedEval!=='평소와 비슷한 편이에요')summaryParts.push(`수유량은 ${feedEval}`);
+    if(napEval&&napEval!=='평소와 비슷한 편이에요')summaryParts.push(`낮잠은 ${napEval}`);
+    const summary=summaryParts.length?'오늘은 '+summaryParts.join(', ')+'.':'오늘 흐름은 평소와 비슷한 편이에요.';
+
+    return (
+      <div style={{margin:'12px 16px 0',background:'var(--card)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+        <div style={{padding:'14px 16px 10px',borderBottom:'1px solid var(--border)'}}>
+          <div style={{fontSize:'15px',fontWeight:700}}>📋 오늘 하루 요약</div>
+          <div style={{fontSize:'13px',color:'var(--txt2)',marginTop:'6px',lineHeight:1.6}}>{summary}</div>
         </div>
+        <div style={{padding:'10px 16px',borderBottom:'.5px solid var(--border)'}}>
+          <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'4px'}}>🍼 수유</div>
+          <div style={{fontSize:'13px',color:'var(--txt)'}}>{todayFeedCnt}회 · 총 {todayFeedMl}ml{feedEval?` · ${feedEval}`:''}</div>
+        </div>
+        <div style={{padding:'10px 16px',borderBottom:'.5px solid var(--border)'}}>
+          <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'4px'}}>😴 수면</div>
+          {todayNapMin>0&&<div style={{fontSize:'13px',color:'var(--txt)',marginBottom:'2px'}}>낮잠 {durLabel(todayNapMin)}{napEval?` · ${napEval}`:''}</div>}
+          {wakeMedian>0&&<div style={{fontSize:'13px',color:'var(--txt2)'}}>평균 각성시간 {durLabel(Math.round(wakeMedian))}</div>}
+          {nextSleepLabel&&<div style={{fontSize:'13px',color:'var(--sleep)'}}>다음 졸림 예상 {nextSleepLabel}</div>}
+          {nightSleep&&<div style={{fontSize:'13px',color:'var(--txt2)'}}>어제 추정 밤잠 {fmtTime(nightSleep.start_time)} 시작</div>}
+          {!todayNapMin&&!wakeMedian&&<div style={{fontSize:'13px',color:'var(--txt3)'}}>수면 기록이 없어요</div>}
+        </div>
+        <div style={{padding:'10px 16px'}}>
+          <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'4px'}}>💧 기저귀</div>
+          <div style={{fontSize:'13px',color:'var(--txt)'}}>{todayDiaperCnt}회{diaperEval?` · ${diaperEval}`:''}</div>
+        </div>
+      </div>
+    );
+  })()}
 
-        {/* 하루 요약 리포트 */}
-        {(() => {
-          const todayDs = fmtDate(new Date());
-          const todayRecs = records.filter(r => r.date === todayDs);
-          if (todayRecs.length < 3) return (
-            <div style={{margin:'12px 16px',background:'var(--card)',borderRadius:'var(--r)',padding:'16px',boxShadow:'0 1px 4px rgba(0,0,0,.06)',fontSize:'13px',color:'var(--txt3)',textAlign:'center'}}>
-              🌱 기록이 조금 더 쌓이면 요약을 보여드릴게요
-            </div>
-          );
-          const days7ago = Date.now() - 7 * 86400000;
-          const week = records.filter(r => new Date(r.start_time).getTime() > days7ago && r.date !== todayDs);
-
-          // 수유
-          const todayFeedMl = todayRecs.filter(r => r.type === 'formula').reduce((s,r) => s+Number(r.ml||0), 0)
-            + breastToFormulaMl(todayRecs.filter(r => r.type === 'breast').reduce((s,r) => s+(Number(r.left_min||0)+Number(r.right_min||0)), 0), settings.babyBirth);
-          const todayFeedCnt = todayRecs.filter(r => r.type === 'formula' || r.type === 'breast').length;
-          const weekFeedDays: Record<string, number> = {};
-          week.filter(r => r.type === 'formula' || r.type === 'breast').forEach(r => { weekFeedDays[r.date] = (weekFeedDays[r.date]||0) + (r.type === 'formula' ? Number(r.ml||0) : breastToFormulaMl((Number(r.left_min||0)+Number(r.right_min||0)), settings.babyBirth)); });
-          const weekFeedAvg = Object.keys(weekFeedDays).length ? Object.values(weekFeedDays).reduce((s,v)=>s+v,0)/Object.keys(weekFeedDays).length : 0;
-          const feedEval = weekFeedAvg ? (todayFeedMl >= weekFeedAvg*1.2 ? '많은 편이에요' : todayFeedMl <= weekFeedAvg*0.8 ? '적은 편이에요' : '평소와 비슷한 편이에요') : '';
-
-          // 낮잠
-          const todayNaps = todayRecs.filter(r => r.type === 'sleep' && r.sleep_kind === 'nap' && r.end_time);
-          const todayNapMin = todayNaps.reduce((s,r) => s+durMin(r.start_time, r.end_time!), 0);
-          const weekNapDays: Record<string, number> = {};
-          week.filter(r => r.type === 'sleep' && r.sleep_kind === 'nap' && r.end_time).forEach(r => { weekNapDays[r.date] = (weekNapDays[r.date]||0) + durMin(r.start_time, r.end_time!); });
-          const weekNapAvg = Object.keys(weekNapDays).length ? Object.values(weekNapDays).reduce((s,v)=>s+v,0)/Object.keys(weekNapDays).length : 0;
-          const napEval = weekNapAvg ? (todayNapMin >= weekNapAvg*1.2 ? '긴 편이에요' : todayNapMin <= weekNapAvg*0.8 ? '짧은 편이에요' : '평소와 비슷한 편이에요') : '';
-
-          // 각성시간 중앙값
-          const napsSorted = [...records.filter(r => r.type==='sleep'&&r.sleep_kind==='nap'&&r.end_time&&new Date(r.start_time).getTime()>days7ago)].sort((a,b)=>a.end_time!>b.end_time!?1:-1);
-          const wakeGaps: number[] = [];
-          for (let i = 0; i < napsSorted.length-1; i++) {
-            const wake = new Date(napsSorted[i].end_time!).getTime();
-            const nextSleep = records.filter(r=>r.type==='sleep'&&new Date(r.start_time).getTime()>wake).sort((a,b)=>a.start_time>b.start_time?1:-1)[0];
-            if (nextSleep) { const g=(new Date(nextSleep.start_time).getTime()-wake)/60000; if(g>=30&&g<=240) wakeGaps.push(g); }
-          }
-          const wakeMedian = wakeGaps.length >= 3 ? [...wakeGaps].sort((a,b)=>a-b)[Math.floor(wakeGaps.length/2)] : 0;
-
-          // 다음 졸림 예상
-          const lastNap = napsSorted[napsSorted.length-1];
-          let nextSleepLabel = '';
-          if (lastNap && wakeMedian) {
-            const pred = new Date(new Date(lastNap.end_time!).getTime() + wakeMedian*60000);
-            nextSleepLabel = pad(pred.getHours())+':'+pad(pred.getMinutes())+' 전후';
-          }
-
-          // 밤잠 추정 (어제)
-          const yesterday = fmtDate(new Date(Date.now()-86400000));
-          const nightCands = records.filter(r=>r.type==='sleep'&&r.date===yesterday&&new Date(r.start_time).getHours()>=19&&r.end_time);
-          nightCands.sort((a,b)=>durMin(a.start_time,a.end_time!)>durMin(b.start_time,b.end_time!)?-1:1);
-          const nightSleep = nightCands[0] && durMin(nightCands[0].start_time, nightCands[0].end_time!) >= 120 ? nightCands[0] : null;
-
-          // 기저귀
-          const todayDiaperCnt = todayRecs.filter(r=>r.type==='diaper').length;
-          const weekDiaperDays: Record<string,number> = {};
-          week.filter(r=>r.type==='diaper').forEach(r=>{ weekDiaperDays[r.date]=(weekDiaperDays[r.date]||0)+1; });
-          const weekDiaperAvg = Object.keys(weekDiaperDays).length ? Object.values(weekDiaperDays).reduce((s,v)=>s+v,0)/Object.keys(weekDiaperDays).length : 0;
-          const diaperEval = weekDiaperAvg ? (todayDiaperCnt>=weekDiaperAvg*1.2?'많은 편이에요':todayDiaperCnt<=weekDiaperAvg*0.8?'적은 편이에요':'평소와 비슷한 편이에요') : '';
-
-          // 한 줄 요약
-          const summaryParts = [];
-          if (feedEval && feedEval !== '평소와 비슷한 편이에요') summaryParts.push(`수유량은 ${feedEval}`);
-          if (napEval && napEval !== '평소와 비슷한 편이에요') summaryParts.push(`낮잠은 ${napEval}`);
-          const summary = summaryParts.length ? '오늘은 ' + summaryParts.join(', ') + '.' : '오늘 흐름은 평소와 비슷한 편이에요.';
-
-          return (
-            <div style={{margin:'12px 16px 16px',background:'var(--card)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-              <div style={{padding:'14px 16px 10px',borderBottom:'1px solid var(--border)'}}>
-                <div style={{fontSize:'15px',fontWeight:700}}>📋 오늘 하루 요약</div>
-                <div style={{fontSize:'13px',color:'var(--txt2)',marginTop:'6px',lineHeight:1.6}}>{summary}</div>
-              </div>
-              <div style={{padding:'10px 16px',borderBottom:'.5px solid var(--border)'}}>
-                <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'4px'}}>🍼 수유</div>
-                <div style={{fontSize:'13px',color:'var(--txt)'}}>{todayFeedCnt}회 · 총 {todayFeedMl}ml{feedEval ? ` · ${feedEval}` : ''}</div>
-              </div>
-              <div style={{padding:'10px 16px',borderBottom:'.5px solid var(--border)'}}>
-                <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'4px'}}>😴 수면</div>
-                {todayNapMin > 0 && <div style={{fontSize:'13px',color:'var(--txt)',marginBottom:'2px'}}>낮잠 총량 {durLabel(todayNapMin)}{napEval ? ` · ${napEval}` : ''}</div>}
-                {wakeMedian > 0 && <div style={{fontSize:'13px',color:'var(--txt2)'}}>평균 각성시간 {durLabel(Math.round(wakeMedian))}</div>}
-                {nextSleepLabel && <div style={{fontSize:'13px',color:'var(--sleep)'}}>다음 졸림 예상 {nextSleepLabel}</div>}
-                {nightSleep && <div style={{fontSize:'13px',color:'var(--txt2)'}}>어제 추정 밤잠 {fmtTime(nightSleep.start_time)} 시작</div>}
-                {!todayNapMin && !wakeMedian && <div style={{fontSize:'13px',color:'var(--txt3)'}}>수면 기록이 없어요</div>}
-              </div>
-              <div style={{padding:'10px 16px'}}>
-                <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'4px'}}>💧 기저귀</div>
-                <div style={{fontSize:'13px',color:'var(--txt)'}}>{todayDiaperCnt}회{diaperEval ? ` · ${diaperEval}` : ''}</div>
-              </div>
-            </div>
-          );
-        })()}
-
-        <div style={{ paddingBottom: '20px' }} dangerouslySetInnerHTML={{ __html: statsContent }} />
+  <div style={{ paddingBottom: '20px' }} dangerouslySetInnerHTML={{ __html: statsContent }} />
       </div>
 
       {/* GROWTH PAGE */}
