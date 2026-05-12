@@ -48,27 +48,6 @@ body.dark {
   --diaper-bg: #0A2220; --growth-bg: #0A2010; --hospital-bg: #2A0A0A; --bath-bg: #0A1E2A;
 }
 
-
-:root {
-  --sleep:#7B6CF6;--sleep-bg:#F0EEFF;
-  --formula:#F5A623;--formula-bg:#FFF8EC;
-  --breast:#E8667A;--breast-bg:#FFF0F2;
-  --diaper:#3DBAA2;--diaper-bg:#EDFAF7;
-  --growth:#34C759;--growth-bg:#E8F8ED;
-  --hospital:#FF6B6B;--hospital-bg:#FFF0F0;
-  --bath:#29A8E0;--bath-bg:#E8F6FD;
-  --vaccine:#9B59B6;--vaccine-bg:#F5EEF8;
-  --primary:#5B7BFF;--primary-bg:#EEF1FF;
-  --bg:#F4F5FA;--card:#fff;
-  --txt:#1A1D2E;--txt2:#6B7280;--txt3:#B0B7C3;
-  --border:#E8EAF0;--r:16px;--rs:10px;
-}
-body.dark {
-  --bg:#0F1117;--card:#1C1F2E;--txt:#F0F2FF;--txt2:#9BA3B8;
-  --border:#2A2D3E;--primary-bg:#1A1F3A;
-  --sleep-bg:#1E1A3A;--formula-bg:#2A1F0A;--breast-bg:#2A141A;
-  --diaper-bg:#0A2220;--growth-bg:#0A2010;--hospital-bg:#2A0A0A;--bath-bg:#0A1E2A;
-}
 .hd{background:linear-gradient(135deg,#4A6CF7 0%,#7B3FF2 100%);padding:16px 16px 0;color:#fff;position:relative;overflow:hidden}
 .hd-top{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:14px;position:relative;z-index:1}
 .hd-title{font-size:22px;font-weight:900;letter-spacing:-.6px}

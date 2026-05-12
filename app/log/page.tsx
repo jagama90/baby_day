@@ -87,6 +87,8 @@ type BabyRecord = {
   hospital_type?: string;
   vaccine_name?: string;
   memo?: string;
+  recorded_by_name?: string;
+  recorded_by_role?: string;
 };
 
 type Settings = {
@@ -174,7 +176,10 @@ function LogPageInner() {
   const [sWarn, setSWarn] = useState('3');
   const [sWeight, setSWeight] = useState('');
   const [sAvgFormula, setSAvgFormula] = useState('');
-  const router = useRouter()  // ← 여기 추가
+  const router = useRouter()
+  const [patternMsgs, setPatternMsgs] = useState<string[]>([]);
+  const [patternIdx, setPatternIdx] = useState(0);
+  const [patternVisible, setPatternVisible] = useState(true);
 
   const recogRef = useRef<any>(null);
   const sleepTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -257,9 +262,96 @@ useEffect(() => {
   }, []);
 
   useEffect(() => {
-    const s = loadSettings();
-    loadAll(s);
-  }, [loadSettings, loadAll]);
+  const s = loadSettings();
+  loadAll(s);
+}, [loadSettings, loadAll]);
+
+// ── PATTERN PREDICTION ──
+useEffect(() => {
+  if (!records.length) return;
+  const msgs: string[] = [];
+  const now = Date.now();
+  const days7 = now - 7 * 86400000;
+  const days14 = now - 14 * 86400000;
+
+  // 1순위: 수유 예측
+  const feedRecs = records.filter(r => (r.type === 'formula' || r.type === 'breast') && new Date(r.start_time).getTime() > days14)
+    .sort((a, b) => a.start_time > b.start_time ? 1 : -1);
+  if (feedRecs.length >= 5) {
+    const gaps: number[] = [];
+    for (let i = 1; i < feedRecs.length; i++) {
+      const g = (new Date(feedRecs[i].start_time).getTime() - new Date(feedRecs[i-1].start_time).getTime()) / 60000;
+      if (g >= 30 && g <= 360) gaps.push(g);
+    }
+    if (gaps.length >= 5) {
+      const sorted = [...gaps].sort((a,b) => a-b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const lastFeedTime = new Date(feedRecs[feedRecs.length - 1].start_time).getTime();
+      const nextFeedTime = lastFeedTime + median * 60000;
+      const remaining = Math.round((nextFeedTime - now) / 60000);
+      if (remaining >= 0 && remaining <= 60) {
+        msgs.push(`💡 평소 패턴상 약 ${remaining}분 안에 배고픔 신호가 올 수 있어요`);
+      }
+    }
+  }
+
+  // 2순위: 졸림 예측
+  const napRecs = records.filter(r => r.type === 'sleep' && r.sleep_kind === 'nap' && r.end_time && new Date(r.start_time).getTime() > days7)
+    .sort((a, b) => a.end_time! > b.end_time! ? 1 : -1);
+  if (napRecs.length >= 2) {
+    const wakeGaps: number[] = [];
+    for (let i = 0; i < napRecs.length - 1; i++) {
+      const wakeTime = new Date(napRecs[i].end_time!).getTime();
+      const nextSleepRecs = records.filter(r => r.type === 'sleep' && new Date(r.start_time).getTime() > wakeTime).sort((a,b) => a.start_time > b.start_time ? 1 : -1);
+      if (nextSleepRecs.length) {
+        const g = (new Date(nextSleepRecs[0].start_time).getTime() - wakeTime) / 60000;
+        if (g >= 30 && g <= 240) wakeGaps.push(g);
+      }
+    }
+    if (wakeGaps.length >= 3) {
+      const sorted = [...wakeGaps].sort((a,b) => a-b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const lastNap = napRecs[napRecs.length - 1];
+      const lastWake = new Date(lastNap.end_time!).getTime();
+      const nextSleepTime = lastWake + median * 60000;
+      const remaining = Math.round((nextSleepTime - now) / 60000);
+      const elapsed = Math.round((now - lastWake) / 60000);
+      const eh = Math.floor(elapsed / 60), em = elapsed % 60;
+      if (remaining >= 0 && remaining <= 30) {
+        msgs.push(`💡 마지막 낮잠에서 깬 지 ${eh ? eh+'시간 ' : ''}${em}분, 곧 졸림 신호가 올 수 있어요`);
+      }
+    }
+  }
+
+  // 3순위: 하루 맥락
+  const todayStr2 = fmtDate(new Date());
+  const todayNaps = records.filter(r => r.type === 'sleep' && r.sleep_kind === 'nap' && r.date === todayStr2 && r.end_time);
+  const todayNapMin = todayNaps.reduce((s, r) => s + durMin(r.start_time, r.end_time!), 0);
+  const week7Naps = records.filter(r => r.type === 'sleep' && r.sleep_kind === 'nap' && r.end_time && new Date(r.start_time).getTime() > days7 && r.date !== todayStr2);
+  if (week7Naps.length >= 3 && todayNapMin > 0) {
+    const dayMap: Record<string, number> = {};
+    week7Naps.forEach(r => { dayMap[r.date] = (dayMap[r.date] || 0) + durMin(r.start_time, r.end_time!); });
+    const dayVals = Object.values(dayMap);
+    const avg = dayVals.reduce((s, v) => s + v, 0) / dayVals.length;
+    if (avg > 0) {
+      const diff = (todayNapMin - avg) / avg;
+      if (diff <= -0.2) msgs.push(`💡 오늘 낮잠은 평소보다 짧은 편이에요`);
+      else if (diff >= 0.2) msgs.push(`💡 오늘 낮잠은 평소보다 긴 편이에요`);
+    }
+  }
+
+  setPatternMsgs(msgs);
+  setPatternIdx(0);
+}, [records]);
+
+useEffect(() => {
+  if (patternMsgs.length <= 1) return;
+  const iv = setInterval(() => {
+    setPatternVisible(false);
+    setTimeout(() => { setPatternIdx(i => (i + 1) % patternMsgs.length); setPatternVisible(true); }, 400);
+  }, 4500);
+  return () => clearInterval(iv);
+}, [patternMsgs]);
 
   // ── SLEEP TIMER ──
   useEffect(() => {
@@ -983,6 +1075,13 @@ const handleLogout = async () => {
           })}
         </div>
 
+        {/* Pattern Prediction Slide */}
+        {patternMsgs.length > 0 && (
+          <div style={{margin:'0 16px 4px',background:'var(--primary-bg)',borderRadius:'12px',padding:'10px 14px',transition:'opacity 0.4s',opacity:patternVisible?1:0}}>
+            <span style={{fontSize:'13px',color:'var(--primary)',fontWeight:500}}>{patternMsgs[patternIdx]}</span>
+          </div>
+        )}
+
         {/* Feed Warning */}
         {showWarn && (
           <div className="warn-banner feed">
@@ -1030,6 +1129,11 @@ const handleLogout = async () => {
                     <div className="li-detail">{detail(r)}</div>
                     {r.type === 'sleep' && !r.end_time && <div className="sleep-timer">{sleepTimerMap[r.id] || '⏱ 진행 중...'}</div>}
                     {r.memo && <div className="memo-text">📝 {r.memo}</div>}
+                    {r.recorded_by_name && (
+                      <div style={{fontSize:'11px',color:'rgba(0,0,0,0.22)',marginTop:'4px',textAlign:'center'}}>
+                        {({'mom':'엄마','dad':'아빠','parent':'보호자','guardian':'보호자'} as Record<string,string>)[r.recorded_by_role||''] || r.recorded_by_name}가 기록함
+                      </div>
+                    )}
                   </div>
                   <div className="li-right">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -1057,6 +1161,99 @@ const handleLogout = async () => {
             <button className="period-btn" onClick={() => setStatsOffset(p => p + 1)}>›</button>
           </div>
         </div>
+
+        {/* 하루 요약 리포트 */}
+        {(() => {
+          const todayDs = fmtDate(new Date());
+          const todayRecs = records.filter(r => r.date === todayDs);
+          if (todayRecs.length < 3) return (
+            <div style={{margin:'12px 16px',background:'var(--card)',borderRadius:'var(--r)',padding:'16px',boxShadow:'0 1px 4px rgba(0,0,0,.06)',fontSize:'13px',color:'var(--txt3)',textAlign:'center'}}>
+              🌱 기록이 조금 더 쌓이면 요약을 보여드릴게요
+            </div>
+          );
+          const days7ago = Date.now() - 7 * 86400000;
+          const week = records.filter(r => new Date(r.start_time).getTime() > days7ago && r.date !== todayDs);
+
+          // 수유
+          const todayFeedMl = todayRecs.filter(r => r.type === 'formula').reduce((s,r) => s+Number(r.ml||0), 0)
+            + breastToFormulaMl(todayRecs.filter(r => r.type === 'breast').reduce((s,r) => s+(Number(r.left_min||0)+Number(r.right_min||0)), 0), settings.babyBirth);
+          const todayFeedCnt = todayRecs.filter(r => r.type === 'formula' || r.type === 'breast').length;
+          const weekFeedDays: Record<string, number> = {};
+          week.filter(r => r.type === 'formula' || r.type === 'breast').forEach(r => { weekFeedDays[r.date] = (weekFeedDays[r.date]||0) + (r.type === 'formula' ? Number(r.ml||0) : breastToFormulaMl((Number(r.left_min||0)+Number(r.right_min||0)), settings.babyBirth)); });
+          const weekFeedAvg = Object.keys(weekFeedDays).length ? Object.values(weekFeedDays).reduce((s,v)=>s+v,0)/Object.keys(weekFeedDays).length : 0;
+          const feedEval = weekFeedAvg ? (todayFeedMl >= weekFeedAvg*1.2 ? '많은 편이에요' : todayFeedMl <= weekFeedAvg*0.8 ? '적은 편이에요' : '평소와 비슷한 편이에요') : '';
+
+          // 낮잠
+          const todayNaps = todayRecs.filter(r => r.type === 'sleep' && r.sleep_kind === 'nap' && r.end_time);
+          const todayNapMin = todayNaps.reduce((s,r) => s+durMin(r.start_time, r.end_time!), 0);
+          const weekNapDays: Record<string, number> = {};
+          week.filter(r => r.type === 'sleep' && r.sleep_kind === 'nap' && r.end_time).forEach(r => { weekNapDays[r.date] = (weekNapDays[r.date]||0) + durMin(r.start_time, r.end_time!); });
+          const weekNapAvg = Object.keys(weekNapDays).length ? Object.values(weekNapDays).reduce((s,v)=>s+v,0)/Object.keys(weekNapDays).length : 0;
+          const napEval = weekNapAvg ? (todayNapMin >= weekNapAvg*1.2 ? '긴 편이에요' : todayNapMin <= weekNapAvg*0.8 ? '짧은 편이에요' : '평소와 비슷한 편이에요') : '';
+
+          // 각성시간 중앙값
+          const napsSorted = [...records.filter(r => r.type==='sleep'&&r.sleep_kind==='nap'&&r.end_time&&new Date(r.start_time).getTime()>days7ago)].sort((a,b)=>a.end_time!>b.end_time!?1:-1);
+          const wakeGaps: number[] = [];
+          for (let i = 0; i < napsSorted.length-1; i++) {
+            const wake = new Date(napsSorted[i].end_time!).getTime();
+            const nextSleep = records.filter(r=>r.type==='sleep'&&new Date(r.start_time).getTime()>wake).sort((a,b)=>a.start_time>b.start_time?1:-1)[0];
+            if (nextSleep) { const g=(new Date(nextSleep.start_time).getTime()-wake)/60000; if(g>=30&&g<=240) wakeGaps.push(g); }
+          }
+          const wakeMedian = wakeGaps.length >= 3 ? [...wakeGaps].sort((a,b)=>a-b)[Math.floor(wakeGaps.length/2)] : 0;
+
+          // 다음 졸림 예상
+          const lastNap = napsSorted[napsSorted.length-1];
+          let nextSleepLabel = '';
+          if (lastNap && wakeMedian) {
+            const pred = new Date(new Date(lastNap.end_time!).getTime() + wakeMedian*60000);
+            nextSleepLabel = pad(pred.getHours())+':'+pad(pred.getMinutes())+' 전후';
+          }
+
+          // 밤잠 추정 (어제)
+          const yesterday = fmtDate(new Date(Date.now()-86400000));
+          const nightCands = records.filter(r=>r.type==='sleep'&&r.date===yesterday&&new Date(r.start_time).getHours()>=19&&r.end_time);
+          nightCands.sort((a,b)=>durMin(a.start_time,a.end_time!)>durMin(b.start_time,b.end_time!)?-1:1);
+          const nightSleep = nightCands[0] && durMin(nightCands[0].start_time, nightCands[0].end_time!) >= 120 ? nightCands[0] : null;
+
+          // 기저귀
+          const todayDiaperCnt = todayRecs.filter(r=>r.type==='diaper').length;
+          const weekDiaperDays: Record<string,number> = {};
+          week.filter(r=>r.type==='diaper').forEach(r=>{ weekDiaperDays[r.date]=(weekDiaperDays[r.date]||0)+1; });
+          const weekDiaperAvg = Object.keys(weekDiaperDays).length ? Object.values(weekDiaperDays).reduce((s,v)=>s+v,0)/Object.keys(weekDiaperDays).length : 0;
+          const diaperEval = weekDiaperAvg ? (todayDiaperCnt>=weekDiaperAvg*1.2?'많은 편이에요':todayDiaperCnt<=weekDiaperAvg*0.8?'적은 편이에요':'평소와 비슷한 편이에요') : '';
+
+          // 한 줄 요약
+          const summaryParts = [];
+          if (feedEval && feedEval !== '평소와 비슷한 편이에요') summaryParts.push(`수유량은 ${feedEval}`);
+          if (napEval && napEval !== '평소와 비슷한 편이에요') summaryParts.push(`낮잠은 ${napEval}`);
+          const summary = summaryParts.length ? '오늘은 ' + summaryParts.join(', ') + '.' : '오늘 흐름은 평소와 비슷한 편이에요.';
+
+          return (
+            <div style={{margin:'12px 16px 0',background:'var(--card)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+              <div style={{padding:'14px 16px 10px',borderBottom:'1px solid var(--border)'}}>
+                <div style={{fontSize:'15px',fontWeight:700}}>📋 오늘 하루 요약</div>
+                <div style={{fontSize:'13px',color:'var(--txt2)',marginTop:'6px',lineHeight:1.6}}>{summary}</div>
+              </div>
+              <div style={{padding:'10px 16px',borderBottom:'.5px solid var(--border)'}}>
+                <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'4px'}}>🍼 수유</div>
+                <div style={{fontSize:'13px',color:'var(--txt)'}}>{todayFeedCnt}회 · 총 {todayFeedMl}ml{feedEval ? ` · ${feedEval}` : ''}</div>
+              </div>
+              <div style={{padding:'10px 16px',borderBottom:'.5px solid var(--border)'}}>
+                <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'4px'}}>😴 수면</div>
+                {todayNapMin > 0 && <div style={{fontSize:'13px',color:'var(--txt)',marginBottom:'2px'}}>낮잠 총량 {durLabel(todayNapMin)}{napEval ? ` · ${napEval}` : ''}</div>}
+                {wakeMedian > 0 && <div style={{fontSize:'13px',color:'var(--txt2)'}}>평균 각성시간 {durLabel(Math.round(wakeMedian))}</div>}
+                {nextSleepLabel && <div style={{fontSize:'13px',color:'var(--sleep)'}}>다음 졸림 예상 {nextSleepLabel}</div>}
+                {nightSleep && <div style={{fontSize:'13px',color:'var(--txt2)'}}>어제 추정 밤잠 {fmtTime(nightSleep.start_time)} 시작</div>}
+                {!todayNapMin && !wakeMedian && <div style={{fontSize:'13px',color:'var(--txt3)'}}>수면 기록이 없어요</div>}
+              </div>
+              <div style={{padding:'10px 16px'}}>
+                <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'4px'}}>💧 기저귀</div>
+                <div style={{fontSize:'13px',color:'var(--txt)'}}>{todayDiaperCnt}회{diaperEval ? ` · ${diaperEval}` : ''}</div>
+              </div>
+            </div>
+          );
+        })()}
+
         <div style={{ paddingBottom: '20px' }} dangerouslySetInnerHTML={{ __html: statsContent }} />
       </div>
 
