@@ -31,7 +31,7 @@ export default function AuthCallback() {
             nickname: user.user_metadata.name || user.user_metadata.full_name
           })
           console.log('insert error:', insertError)
-          router.push('/log')
+          router.push('/log?babyId=')
         } else {
         const { data: babies } = await supabase
           .from('baby_members')
