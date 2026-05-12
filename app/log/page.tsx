@@ -608,7 +608,7 @@ useEffect(() => {
   const ds = fmtDate(selDate);
   const dayRecs = records.filter(r => r.date === ds);
   const logRecs = dayRecs.filter(r => r.type !== 'growth' && r.type !== 'hospital').sort((a, b) => {
-    const ta = a.end_time || a.start_time, tb = b.end_time || b.start_time;
+    const ta = a.start_time, tb = b.start_time;
     return tb > ta ? 1 : -1;
   });
   const feeds = [...records].filter(r => r.type === 'formula' || r.type === 'breast').sort((a, b) => b.start_time > a.start_time ? 1 : -1);
@@ -660,7 +660,10 @@ useEffect(() => {
 
   // ── OPEN MODAL ──
   const openModal = (type: string, prefill?: BabyRecord) => {
-    setModalType(type);
+  const params = new URLSearchParams(window.location.search)
+  const babyId = params.get('babyId')
+  if (!babyId) { setShowDrawer(true); setShowAddBaby(true); return; }
+  setModalType(type);
     setModalPrefill(prefill || null);
     setLeftMin(prefill?.left_min ? Number(prefill.left_min) : 0);
     setRightMin(prefill?.right_min ? Number(prefill.right_min) : 0);
@@ -1395,9 +1398,14 @@ const handleLogout = async () => {
                   const babyId = params.get('babyId')
                   if (!babyId || !currentUser) return
                   const code = Math.random().toString(36).slice(2,8).toUpperCase()
-                  await supabase.from('invite_codes').insert({ code, baby_id: babyId, created_by: currentUser.id, expires_at: new Date(Date.now() + 7*24*60*60*1000).toISOString() })
-                  showToast('초대코드: ' + code)
-                  setShowDrawer(false)
+                  const { error } = await supabase.from('invite_codes').insert({
+                    code,
+                    baby_id: babyId,
+                    created_by: currentUser.id,
+                    expires_at: new Date(Date.now() + 24*60*60*1000).toISOString()
+                  })
+                  if (error) { showToast('생성 실패: ' + error.message); return; }
+                  showToast('초대코드: ' + code + ' (24시간 유효)')
                 }} style={{flex:1,padding:'12px',border:'1.5px solid var(--border)',borderRadius:'12px',background:'none',color:'var(--primary)',fontSize:'13px',cursor:'pointer',fontFamily:'inherit',textAlign:'center',fontWeight:600}}>
                   🔗 초대코드 생성
                 </button>

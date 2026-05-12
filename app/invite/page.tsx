@@ -16,7 +16,7 @@ export default function InvitePage() {
     setLoading(true)
     const result = await joinByInviteCode(code, user.id)
     if (result.error) setError(result.error)
-    else router.push('/dashboard')
+    else router.push(`/log?babyId=${result.babyId}`)
     setLoading(false)
   }
 
