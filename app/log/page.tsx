@@ -183,6 +183,7 @@ function LogPageInner() {
   const [drawerBabies, setDrawerBabies] = useState<any[]>([])
   const [showAddBaby, setShowAddBaby] = useState(false)
   const [showBabyProfile, setShowBabyProfile] = useState<any>(null)
+  const [showBabyPicker, setShowBabyPicker] = useState(false)
   const [editingBaby, setEditingBaby] = useState(false)
   const [profileForm, setProfileForm] = useState<any>({})
   const [newBabyName, setNewBabyName] = useState('')
@@ -1070,15 +1071,35 @@ const handleLogout = async () => {
       {/* HEADER */}
       <div className="hd">
         <div className="hd-top" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-          <div onClick={() => setShowDrawer(true)} style={{cursor:'pointer',flex:1}}>
-            <div className="hd-title">{hdTitle} <span style={{fontSize:'14px',opacity:.8}}>▾</span></div>
-            <div className="hd-sub">{ageLabel}</div>
-          </div>
-          <div className="hd-actions" style={{display:'flex',flexDirection:'row',gap:'8px',flexShrink:0}}>
-            <button className="hd-btn" onClick={() => { setCalDate(new Date(selDate)); setShowCal(true); }}>📅</button>
-            <button className="hd-btn" onClick={() => setShowSettings(true)}>⚙️</button>
+        <div style={{display:'flex',alignItems:'flex-start',gap:'8px',flex:1}}>
+          <button className="hd-btn" onClick={() => setShowDrawer(true)}>☰</button>
+          <div style={{position:'relative'}}>
+            <div onClick={() => { if (drawerBabies.length > 1) setShowBabyPicker(p => !p); }} style={{cursor: drawerBabies.length > 1 ? 'pointer' : 'default'}}>
+              <div className="hd-title">
+                {hdTitle}
+                {drawerBabies.length > 1 && <span style={{fontSize:'14px',opacity:.8}}> ▾</span>}
+              </div>
+              <div className="hd-sub">{ageLabel}</div>
+            </div>
+            {showBabyPicker && drawerBabies.length > 1 && (
+              <div style={{position:'absolute',top:'100%',left:0,marginTop:'8px',background:'var(--card)',borderRadius:'12px',boxShadow:'0 4px 20px rgba(0,0,0,.15)',zIndex:100,minWidth:'160px',overflow:'hidden'}}>
+                {drawerBabies.map((m: any) => (
+                  <div key={m.baby_id} onClick={() => {
+                    router.push(`/log?babyId=${m.baby_id}`)
+                    setShowBabyPicker(false)
+                  }} style={{padding:'12px 16px',fontSize:'14px',fontWeight:600,cursor:'pointer',borderBottom:'1px solid var(--border)',color:'var(--txt)'}}>
+                    👶 {m.babies?.name}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+        <div className="hd-actions" style={{display:'flex',flexDirection:'row',gap:'8px',flexShrink:0}}>
+          <button className="hd-btn" onClick={() => { setCalDate(new Date(selDate)); setShowCal(true); }}>📅</button>
+          <button className="hd-btn" onClick={() => setShowSettings(true)}>⚙️</button>
+        </div>
+      </div>
         <div className="sync-bar">
           <div className="sync-row">
             <div className={`sync-dot${syncState === 'loading' ? ' loading' : syncState === 'off' ? ' off' : ''}`}></div>
