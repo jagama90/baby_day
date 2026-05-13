@@ -90,6 +90,7 @@ type BabyRecord = {
   recorded_by_name?: string;
   recorded_by_role?: string;
   user_id?: string;
+  created_at?: string;
 };
 
 type Settings = {
@@ -266,7 +267,7 @@ useEffect(() => {
       const params = new URLSearchParams(window.location.search)
       const babyId = params.get('babyId')
       if (!babyId) { setSyncState('on'); setSyncTxt('실시간 동기화 중'); setRecords([]); return; }
-      const data = await apiGet(`baby_logs?baby_id=eq.${babyId}&order=start_time.desc&limit=1000`)
+      const data = await apiGet(`baby_logs?baby_id=eq.${babyId}&order=start_time.desc,created_at.desc&limit=1000`)
       setRecords(data);
       setSyncState('on'); setSyncTxt('실시간 동기화 중');
     } catch (e: unknown) {
@@ -627,7 +628,7 @@ useEffect(() => {
   const logRecs = dayRecs.filter(r => r.type !== 'growth' && r.type !== 'hospital').sort((a, b) => {
     const diff = new Date(b.start_time).getTime() - new Date(a.start_time).getTime();
     if (diff !== 0) return diff;
-    return b.id > a.id ? 1 : -1;
+    return (b as any).created_at > (a as any).created_at ? 1 : -1;
   });
   const feeds = [...records].filter(r => r.type === 'formula' || r.type === 'breast').sort((a, b) => b.start_time > a.start_time ? 1 : -1);
   const lastFeed = feeds[0];
@@ -1068,11 +1069,11 @@ const handleLogout = async () => {
         <div className="hd-top">
           <div>
             <div onClick={() => setShowDrawer(true)} style={{cursor:'pointer'}}>
-            <div className="hd-title">{hdTitle} <span style={{fontSize:'14px',opacity:.8}}>▾</span></div>
-            <div className="hd-sub" style={{borderBottom:'1px solid rgba(255,255,255,.4)',paddingBottom:'2px',display:'inline-block'}}>{ageLabel}</div>
-          </div>
-          ...
-          {/* ☰ 버튼 줄 삭제 */}
+              <div className="hd-title">{hdTitle} <span style={{fontSize:'14px',opacity:.8}}>▾</span></div>
+              <div className="hd-sub" style={{borderBottom:'1px solid rgba(255,255,255,.4)',paddingBottom:'2px',display:'inline-block'}}>{ageLabel}</div>
+            </div>
+            ...
+            <button className="hd-btn" onClick={() => { setCalDate(new Date(selDate)); setShowCal(true); }}>📅</button>
             <button className="hd-btn" onClick={() => setShowSettings(true)}>⚙️</button>  
           </div>
         </div>
