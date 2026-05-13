@@ -214,7 +214,7 @@ function LogPageInner() {
 
   // ── SCROLL LOCK when modal open ──
 useEffect(() => {
-  const anyModal = showModal || showSettings || showCal || !!editFormula || !!editBreast || !!editDiaper || !!editSleep || showVoice || showDrawer || !!showBabyProfile;if (anyModal) {
+  const anyModal = showModal || showSettings || showCal || !!editFormula || !!editBreast || !!editDiaper || !!editSleep || showVoice || showDrawer || !!showBabyProfile; if (anyModal) {
     document.body.style.overflow = 'hidden';
   } else {
     document.body.style.overflow = '';
@@ -625,7 +625,9 @@ useEffect(() => {
   const ds = fmtDate(selDate);
   const dayRecs = records.filter(r => r.date === ds);
   const logRecs = dayRecs.filter(r => r.type !== 'growth' && r.type !== 'hospital').sort((a, b) => {
-    return new Date(b.start_time).getTime() - new Date(a.start_time).getTime();
+    const diff = new Date(b.start_time).getTime() - new Date(a.start_time).getTime();
+    if (diff !== 0) return diff;
+    return b.id > a.id ? 1 : -1;
   });
   const feeds = [...records].filter(r => r.type === 'formula' || r.type === 'breast').sort((a, b) => b.start_time > a.start_time ? 1 : -1);
   const lastFeed = feeds[0];
@@ -1065,13 +1067,12 @@ const handleLogout = async () => {
       <div className="hd">
         <div className="hd-top">
           <div>
-            <div className="hd-title">{hdTitle}</div>
-            <div className="hd-sub">{ageLabel}</div>
+            <div onClick={() => setShowDrawer(true)} style={{cursor:'pointer'}}>
+            <div className="hd-title">{hdTitle} <span style={{fontSize:'14px',opacity:.8}}>▾</span></div>
+            <div className="hd-sub" style={{borderBottom:'1px solid rgba(255,255,255,.4)',paddingBottom:'2px',display:'inline-block'}}>{ageLabel}</div>
           </div>
-          <div className="hd-actions">
-            <button className="hd-btn" onClick={() => { setCalDate(new Date(selDate)); setShowCal(true); }}>📅</button>
-            <button className="hd-btn" onClick={exportCSV}>⬇️</button>
-            <button className="hd-btn" onClick={() => setShowDrawer(true)}>☰</button>
+          ...
+          {/* ☰ 버튼 줄 삭제 */}
             <button className="hd-btn" onClick={() => setShowSettings(true)}>⚙️</button>  
           </div>
         </div>
@@ -1359,29 +1360,38 @@ const handleLogout = async () => {
                 <div style={{fontSize:'13px',color:'var(--txt3)',padding:'8px 0'}}>등록된 아기가 없어요</div>
               )}
               {drawerBabies.map((m: any) => (
-                <div key={m.baby_id} onClick={() => {
+              <div key={m.baby_id} style={{position:'relative',marginBottom:'4px'}}>
+                <div onClick={() => {
                   setShowBabyProfile(m)
                   setProfileForm({
-                    name: m.babies?.name || '',
-                    birth_date: m.babies?.birth_date || '',
-                    gender: m.babies?.gender || 'male',
-                    due_date: m.babies?.due_date || '',
-                    birth_weight: m.babies?.birth_weight || '',
-                    birth_height: m.babies?.birth_height || '',
-                    birth_head: m.babies?.birth_head || '',
-                    feeding_type: m.babies?.feeding_type || 'mixed',
-                    blood_type: m.babies?.blood_type || '',
-                    birth_hospital: m.babies?.birth_hospital || '',
+                    name: m.babies?.name||'',birth_date: m.babies?.birth_date||'',
+                    gender: m.babies?.gender||'male',due_date: m.babies?.due_date||'',
+                    birth_weight: m.babies?.birth_weight||'',birth_height: m.babies?.birth_height||'',
+                    birth_head: m.babies?.birth_head||'',feeding_type: m.babies?.feeding_type||'mixed',
+                    blood_type: m.babies?.blood_type||'',birth_hospital: m.babies?.birth_hospital||'',
                   })
                   setEditingBaby(false)
-                }} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px',borderRadius:'12px',cursor:'pointer',background:(() => { const p = new URLSearchParams(window.location.search); return p.get('babyId') === m.baby_id ? 'var(--primary-bg)' : 'transparent'; })(), marginBottom:'4px'}}>
+                }} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px',borderRadius:'12px',cursor:'pointer',background:(() => { const p = new URLSearchParams(window.location.search); return p.get('babyId') === m.baby_id ? 'var(--primary-bg)' : 'transparent'; })(),paddingRight:'36px'}}>
                   <div style={{width:'40px',height:'40px',borderRadius:'50%',background:'var(--primary-bg)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px'}}>👶</div>
                   <div>
                     <div style={{fontSize:'14px',fontWeight:700,color:'var(--txt)'}}>{m.babies?.name}</div>
-                    <div style={{fontSize:'12px',color:'var(--txt3)'}}>{m.babies?.birth_date} · {({'mom':'엄마','dad':'아빠','parent':'보호자','guardian':'보호자'} as Record<string,string>)[m.role] || m.role}</div>
+                    <div style={{fontSize:'12px',color:'var(--txt3)'}}>{m.babies?.birth_date} · {({'mom':'엄마','dad':'아빠','parent':'보호자','guardian':'보호자'} as Record<string,string>)[m.role]||m.role}</div>
                   </div>
                 </div>
-              ))}
+                <button onClick={async (e) => {
+                  e.stopPropagation()
+                  if (!confirm(`${m.babies?.name} 아기를 삭제할까요? 모든 기록이 삭제됩니다.`)) return
+                  await supabase.from('baby_logs').delete().eq('baby_id', m.baby_id)
+                  await supabase.from('invite_codes').delete().eq('baby_id', m.baby_id)
+                  await supabase.from('baby_members').delete().eq('baby_id', m.baby_id)
+                  await supabase.from('babies').delete().eq('id', m.baby_id)
+                  setDrawerBabies((prev:any) => prev.filter((x:any) => x.baby_id !== m.baby_id))
+                  showToast('삭제됨')
+                  const params = new URLSearchParams(window.location.search)
+                  if (params.get('babyId') === m.baby_id) router.push('/log')
+                }} style={{position:'absolute',top:'50%',right:'8px',transform:'translateY(-50%)',background:'none',border:'none',fontSize:'18px',color:'var(--txt3)',cursor:'pointer',padding:'4px',lineHeight:1}}>×</button>
+              </div>
+            ))}
 
               {/* 아기 추가 */}
               {!showAddBaby ? (
