@@ -214,8 +214,7 @@ function LogPageInner() {
 
   // ── SCROLL LOCK when modal open ──
 useEffect(() => {
-  const anyModal = showModal || showSettings || showCal || !!editFormula || !!editBreast || !!editDiaper || !!editSleep || showVoice;
-  if (anyModal) {
+  const anyModal = showModal || showSettings || showCal || !!editFormula || !!editBreast || !!editDiaper || !!editSleep || showVoice || showDrawer || !!showBabyProfile;if (anyModal) {
     document.body.style.overflow = 'hidden';
   } else {
     document.body.style.overflow = '';
@@ -285,8 +284,11 @@ useEffect(() => {
     if (user) {
       const params = new URLSearchParams(window.location.search)
       const babyId = params.get('babyId')
-      supabase.from('baby_members').select('baby_id, role, babies(id, name, birth_date)').eq('user_id', user.id)
-        .then(({ data }) => setDrawerBabies(data || []))
+      supabase.from('baby_members').select('baby_id, role, babies(id, name, birth_date, gender, photo_url, due_date, birth_weight, birth_height, birth_head, feeding_type, blood_type, birth_hospital)').eq('user_id', user.id)
+      .then(({ data }) => {
+        const deduped = (data || []).filter((m: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.baby_id === m.baby_id) === i)
+        setDrawerBabies(deduped)
+      })
       if (babyId) {
         supabase.from('baby_members').select('user_id, role').eq('baby_id', babyId)
           .then(({ data }) => {
@@ -1155,47 +1157,47 @@ const handleLogout = async () => {
         {/* Log List */}
         <div className="log-list">
           {logRecs.length === 0
-            ? <div className="empty"><div className="empty-e">📋</div><div>이 날의 기록이 없어요</div></div>
-            : logRecs.map(r => {
-              const isEditable = r.type === 'breast' || r.type === 'diaper' || r.type === 'sleep' || r.type === 'formula';
-              return (
-                <div key={r.id} className="log-card" style={isEditable ? { cursor: 'pointer' } : {}}
-                  onClick={isEditable ? () => {
-                    if (r.type === 'formula') { setEditFormula(r); setEditStartTime(fmtTime(r.start_time)); setEditMl(Number(r.ml || 0)); }
-                    else if (r.type === 'breast') { setEditBreast(r); setEditLeftMin(Number(r.left_min || 0)); setEditRightMin(Number(r.right_min || 0)); setEditStartTime(fmtTime(r.start_time)); }
-                    else if (r.type === 'diaper') { setEditDiaper(r); setEditDK((r.diaper_kind as 'urine' | 'stool' | 'both') || 'urine'); setEditStartTime(fmtTime(r.start_time)); }
-                    else if (r.type === 'sleep') { setEditSleep(r); setEditStartTime(fmtTime(r.start_time)); setEditEndTime(r.end_time ? fmtTime(r.end_time) : ''); }
-                  } : undefined}>
-                  <div className={`li-icon ${r.type}`}>{EMOJI[r.type]}</div>
-                  <div className="li-body">
-                  <div className={`li-type ${r.type}`}>{LABEL[r.type]}{r.sleep_kind ? ' · ' + (r.sleep_kind === 'nap' ? '낮잠' : '밤잠') : ''}</div>
-                  {r.type === 'formula'
-                    ? <div style={{fontSize:'18px',fontWeight:800,color:'var(--formula)',marginTop:'2px'}}>{r.ml}ml</div>
-                    : <div className="li-detail">{detail(r)}</div>
-                  }
-                  {r.type === 'sleep' && !r.end_time && <div className="sleep-timer">{sleepTimerMap[r.id] || '⏱ 진행 중...'}</div>}
-                  {r.memo && <div className="memo-text">📝 {r.memo}</div>}
-                  {r.user_id && memberRoleMap[r.user_id] && (() => {
-                    const role = memberRoleMap[r.user_id!]
-                    const isMom = role === 'mom' || role === '엄마'
-                    const isDad = role === 'dad' || role === '아빠'
-                    const label = isMom ? '엄마 👩' : isDad ? '아빠 👨' : '보호자'
-                    const color = isMom ? 'rgba(232,102,122,0.7)' : isDad ? 'rgba(91,123,255,0.7)' : 'rgba(107,114,128,0.6)'
-                    return (
-                      <div style={{fontSize:'11px',color,marginTop:'3px',fontWeight:500}}>{label}</div>
-                    )
-                  })()}
-                </div>
-                  <div className="li-right">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      <span className="li-time">{fmtTime(r.start_time)}</span>
-                      <button className="del-btn" onClick={e => { e.stopPropagation(); delRec(r.id); }}>×</button>
-                    </div>
-                    {r.end_time && <div className="li-end">~ {fmtTime(r.end_time)}</div>}
-                  </div>
-                </div>
-              );
-            })}
+  ? <div className="empty"><div className="empty-e">📋</div><div>이 날의 기록이 없어요</div></div>
+  : logRecs.map(r => {
+    const isEditable = r.type === 'breast' || r.type === 'diaper' || r.type === 'sleep' || r.type === 'formula';
+    const diaperEmoji = r.diaper_kind === 'stool' ? '💩' : r.diaper_kind === 'both' ? '💩' : '💧';
+    const roleInfo = r.user_id && memberRoleMap[r.user_id] ? (() => {
+      const role = memberRoleMap[r.user_id!]
+      const isMom = role === 'mom' || role === '엄마'
+      const isDad = role === 'dad' || role === '아빠'
+      return { label: isMom ? '엄마 👩' : isDad ? '아빠 👨' : '보호자', color: isMom ? 'rgba(232,102,122,0.7)' : 'rgba(91,123,255,0.7)' }
+    })() : null;
+    return (
+      <div key={r.id} className="log-card" style={{flexDirection:'column', ...(isEditable ? {cursor:'pointer'} : {})}}
+        onClick={isEditable ? () => {
+          if (r.type === 'formula') { setEditFormula(r); setEditStartTime(fmtTime(r.start_time)); setEditMl(Number(r.ml || 0)); }
+          else if (r.type === 'breast') { setEditBreast(r); setEditLeftMin(Number(r.left_min || 0)); setEditRightMin(Number(r.right_min || 0)); setEditStartTime(fmtTime(r.start_time)); }
+          else if (r.type === 'diaper') { setEditDiaper(r); setEditDK((r.diaper_kind as 'urine' | 'stool' | 'both') || 'urine'); setEditStartTime(fmtTime(r.start_time)); }
+          else if (r.type === 'sleep') { setEditSleep(r); setEditStartTime(fmtTime(r.start_time)); setEditEndTime(r.end_time ? fmtTime(r.end_time) : ''); }
+        } : undefined}>
+        <div style={{display:'flex',gap:'12px',alignItems:'flex-start',width:'100%'}}>
+          <div className={`li-icon ${r.type}`}>{r.type === 'diaper' ? diaperEmoji : EMOJI[r.type]}</div>
+          <div className="li-body">
+            <div className={`li-type ${r.type}`}>{LABEL[r.type]}{r.sleep_kind ? ' · ' + (r.sleep_kind === 'nap' ? '낮잠' : '밤잠') : ''}</div>
+            {r.type === 'formula'
+              ? <div style={{fontSize:'18px',fontWeight:800,color:'var(--formula)',marginTop:'2px'}}>{r.ml}ml</div>
+              : <div className="li-detail">{detail(r)}</div>
+            }
+            {r.type === 'sleep' && !r.end_time && <div className="sleep-timer">{sleepTimerMap[r.id] || '⏱ 진행 중...'}</div>}
+            {r.memo && <div className="memo-text">📝 {r.memo}</div>}
+          </div>
+          <div className="li-right">
+            <div style={{display:'flex',alignItems:'center',gap:'2px'}}>
+              <span className="li-time" style={{fontSize:'17px',fontWeight:700,color:'var(--txt)'}}>{fmtTime(r.start_time)}</span>
+              <button className="del-btn" onClick={e => { e.stopPropagation(); delRec(r.id); }}>×</button>
+            </div>
+            {r.end_time && <div className="li-end">~ {fmtTime(r.end_time)}</div>}
+          </div>
+        </div>
+        {roleInfo && <div style={{textAlign:'center',fontSize:'11px',color:roleInfo.color,marginTop:'6px',width:'100%',fontWeight:500}}>{roleInfo.label}</div>}
+      </div>
+    );
+  })}
         </div>
       </div>
 
@@ -1457,174 +1459,112 @@ const handleLogout = async () => {
           <div style={{width:'100%',maxHeight:'92vh',background:'var(--card)',borderRadius:'24px 24px 0 0',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
             <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}} />
 
-            {!editingBaby ? (
-              /* 프로필 보기 */
-              <div style={{padding:'16px 20px 40px'}}>
-                {/* 헤더 */}
-                <div style={{textAlign:'center',marginBottom:'20px'}}>
-                  <div style={{width:80,height:80,borderRadius:'50%',background:'var(--primary-bg)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,margin:'0 auto 12px'}}>👶</div>
-                  <div style={{fontSize:'22px',fontWeight:900}}>{showBabyProfile.babies?.name}</div>
-                  <div style={{fontSize:'13px',color:'var(--txt2)',marginTop:'4px'}}>
-                    {showBabyProfile.babies?.birth_date} 출생
-                    {showBabyProfile.babies?.gender === 'male' ? ' · 남아 👦' : showBabyProfile.babies?.gender === 'female' ? ' · 여아 👧' : ''}
-                  </div>
-                  {(() => {
-                    if (!showBabyProfile.babies?.birth_date) return null
-                    const diff = Math.floor((Date.now() - new Date(showBabyProfile.babies.birth_date).getTime()) / 86400000)
-                    const weeks = Math.floor(diff / 7)
-                    return <div style={{fontSize:'13px',color:'var(--primary)',fontWeight:600,marginTop:'4px'}}>D+{diff}일 · {weeks}주 {diff % 7}일</div>
-                  })()}
-                </div>
+            /* 보기+수정 통합 — 항상 수정 가능 */
+<div style={{padding:'16px 20px 40px'}}>
+  <div style={{fontSize:'17px',fontWeight:700,textAlign:'center',marginBottom:'20px'}}>아기 프로필</div>
 
-                {/* 기념일 */}
-                {showBabyProfile.babies?.birth_date && (() => {
-                  const birth = new Date(showBabyProfile.babies.birth_date)
-                  const milestones = [100, 200, 365, 500, 1000].map(d => {
-                    const date = new Date(birth.getTime() + d * 86400000)
-                    return { label: `D+${d}`, date: date.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' }) }
-                  }).filter(m => new Date(birth.getTime() + parseInt(m.label.slice(2)) * 86400000) > new Date())
-                  return milestones.length > 0 ? (
-                    <div style={{background:'var(--bg)',borderRadius:'var(--r)',padding:'14px 16px',marginBottom:'16px'}}>
-                      <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'10px'}}>다음 기념일</div>
-                      {milestones.slice(0,3).map(m => (
-                        <div key={m.label} style={{display:'flex',justifyContent:'space-between',marginBottom:'6px'}}>
-                          <span style={{fontSize:'13px',fontWeight:700,color:'var(--primary)'}}>{m.label}</span>
-                          <span style={{fontSize:'13px',color:'var(--txt2)'}}>{m.date}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null
-                })()}
-
-                {/* 출생 정보 */}
-                <div style={{background:'var(--bg)',borderRadius:'var(--r)',padding:'14px 16px',marginBottom:'16px'}}>
-                  <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'10px'}}>출생 정보</div>
-                  {[
-                    { label:'몸무게', value: showBabyProfile.babies?.birth_weight ? showBabyProfile.babies.birth_weight + ' g' : '-' },
-                    { label:'키', value: showBabyProfile.babies?.birth_height ? showBabyProfile.babies.birth_height + ' cm' : '-' },
-                    { label:'머리둘레', value: showBabyProfile.babies?.birth_head ? showBabyProfile.babies.birth_head + ' cm' : '-' },
-                    { label:'혈액형', value: showBabyProfile.babies?.blood_type || '-' },
-                    { label:'수유방식', value: ({breast:'모유',formula:'분유',mixed:'혼합'} as any)[showBabyProfile.babies?.feeding_type] || '-' },
-                  ].map(item => (
-                    <div key={item.label} style={{display:'flex',justifyContent:'space-between',paddingBottom:'8px',borderBottom:'.5px solid var(--border)',marginBottom:'8px'}}>
-                      <span style={{fontSize:'13px',color:'var(--txt2)'}}>{item.label}</span>
-                      <span style={{fontSize:'13px',fontWeight:600}}>{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* 양육자 목록 */}
-                <div style={{background:'var(--bg)',borderRadius:'var(--r)',padding:'14px 16px',marginBottom:'16px'}}>
-                  <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'10px'}}>양육자 목록</div>
-                  {Object.entries(memberRoleMap).map(([uid, role]) => (
-                    <div key={uid} style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingBottom:'8px',borderBottom:'.5px solid var(--border)',marginBottom:'8px'}}>
-                      <div>
-                        <div style={{fontSize:'13px',fontWeight:600}}>{uid === currentUser?.id ? '나' : uid.slice(0,8)+'...'}</div>
-                        <div style={{fontSize:'11px',color:'var(--txt2)'}}>{({'mom':'엄마','dad':'아빠','parent':'보호자','guardian':'보호자'} as any)[role] || role}</div>
-                      </div>
-                      {uid === currentUser?.id && <span style={{fontSize:'11px',background:'var(--primary-bg)',color:'var(--primary)',padding:'3px 10px',borderRadius:'20px',fontWeight:600}}>나</span>}
-                    </div>
-                  ))}
-                </div>
-
-                {/* 버튼들 */}
-                <button onClick={() => {
-                  router.push(`/log?babyId=${showBabyProfile.baby_id}`)
-                  setShowBabyProfile(null)
-                  setShowDrawer(false)
-                }} style={{width:'100%',padding:'14px',background:'var(--primary)',color:'#fff',border:'none',borderRadius:'var(--r)',fontSize:'15px',fontWeight:700,cursor:'pointer',fontFamily:'inherit',marginBottom:'10px'}}>
-                  이 아기 기록 보기
-                </button>
-                <button onClick={() => setEditingBaby(true)} style={{width:'100%',padding:'14px',background:'none',border:'1.5px solid var(--border)',borderRadius:'var(--r)',fontSize:'15px',color:'var(--txt2)',cursor:'pointer',fontFamily:'inherit',marginBottom:'10px'}}>
-                  프로필 수정
-                </button>
-                <button onClick={() => { setShowBabyProfile(null); setShowDrawer(false); }} style={{width:'100%',padding:'10px',background:'none',border:'none',fontSize:'14px',color:'var(--txt3)',cursor:'pointer',fontFamily:'inherit'}}>
-                  닫기
-                </button>
+  {/* 기념일 */}
+  {showBabyProfile.babies?.birth_date && (() => {
+    const birth = new Date(showBabyProfile.babies.birth_date)
+    const diff = Math.floor((Date.now() - birth.getTime()) / 86400000)
+    const weeks = Math.floor(diff / 7)
+    const milestones = [100,200,365,500,1000].map(d => ({
+      label: `D+${d}`,
+      date: new Date(birth.getTime()+d*86400000).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'})
+    })).filter((_,i) => [100,200,365,500,1000][i] > diff)
+    return (
+      <div style={{textAlign:'center',marginBottom:'16px'}}>
+        <div style={{fontSize:'22px',fontWeight:900}}>{showBabyProfile.babies.name}</div>
+        <div style={{fontSize:'13px',color:'var(--txt2)',marginTop:'4px'}}>{showBabyProfile.babies.birth_date} 출생</div>
+        <div style={{fontSize:'13px',color:'var(--primary)',fontWeight:600,marginTop:'2px'}}>D+{diff}일 · {weeks}주 {diff%7}일</div>
+        {milestones.length>0 && (
+          <div style={{background:'var(--bg)',borderRadius:'var(--r)',padding:'14px 16px',marginTop:'12px',textAlign:'left'}}>
+            <div style={{fontSize:'12px',color:'var(--txt3)',fontWeight:600,marginBottom:'8px'}}>다음 기념일</div>
+            {milestones.slice(0,3).map(m=>(
+              <div key={m.label} style={{display:'flex',justifyContent:'space-between',marginBottom:'4px'}}>
+                <span style={{fontSize:'13px',fontWeight:700,color:'var(--primary)'}}>{m.label}</span>
+                <span style={{fontSize:'13px',color:'var(--txt2)'}}>{m.date}</span>
               </div>
-            ) : (
-              /* 프로필 수정 */
-              <div style={{padding:'16px 20px 40px'}}>
-                <div style={{fontSize:'17px',fontWeight:700,textAlign:'center',marginBottom:'20px'}}>아기 프로필 수정</div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  })()}
 
-                {[
-                  { label:'이름', key:'name', type:'text', placeholder:'아기 이름' },
-                  { label:'생년월일', key:'birth_date', type:'date' },
-                  { label:'출생 예정일', key:'due_date', type:'date' },
-                  { label:'출생 몸무게 (g)', key:'birth_weight', type:'number', placeholder:'2800' },
-                  { label:'출생 키 (cm)', key:'birth_height', type:'number', placeholder:'50' },
-                  { label:'출생 머리둘레 (cm)', key:'birth_head', type:'number', placeholder:'34' },
-                  { label:'출생 병원', key:'birth_hospital', type:'text', placeholder:'병원명' },
-                ].map(field => (
-                  <div key={field.key} style={{marginBottom:'12px'}}>
-                    <label style={{display:'block',fontSize:'12px',color:'var(--txt2)',fontWeight:600,marginBottom:'5px'}}>{field.label}</label>
-                    <input type={field.type} value={profileForm[field.key] || ''} placeholder={field.placeholder}
-                      onChange={e => setProfileForm((p: any) => ({...p, [field.key]: e.target.value}))}
-                      style={{width:'100%',padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'var(--rs)',fontSize:'14px',fontFamily:'inherit',background:'var(--card)',color:'var(--txt)',outline:'none',boxSizing:'border-box'}} />
-                  </div>
-                ))}
+  {/* 수정 필드 */}
+  {[
+    {label:'이름',key:'name',type:'text',placeholder:'아기 이름'},
+    {label:'생년월일',key:'birth_date',type:'date'},
+    {label:'출생 예정일',key:'due_date',type:'date'},
+    {label:'출생 몸무게 (g)',key:'birth_weight',type:'number',placeholder:'2800'},
+    {label:'출생 키 (cm)',key:'birth_height',type:'number',placeholder:'50'},
+    {label:'출생 머리둘레 (cm)',key:'birth_head',type:'number',placeholder:'34'},
+    {label:'출생 병원',key:'birth_hospital',type:'text',placeholder:'병원명'},
+  ].map(field=>(
+    <div key={field.key} style={{marginBottom:'12px'}}>
+      <label style={{display:'block',fontSize:'12px',color:'var(--txt2)',fontWeight:600,marginBottom:'5px'}}>{field.label}</label>
+      <input type={field.type} value={profileForm[field.key]||''} placeholder={field.placeholder}
+        onChange={e=>setProfileForm((p:any)=>({...p,[field.key]:e.target.value}))}
+        style={{width:'100%',padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'var(--rs)',fontSize:'14px',fontFamily:'inherit',background:'var(--card)',color:'var(--txt)',outline:'none',boxSizing:'border-box'}}/>
+    </div>
+  ))}
 
-                <div style={{marginBottom:'12px'}}>
-                  <label style={{display:'block',fontSize:'12px',color:'var(--txt2)',fontWeight:600,marginBottom:'5px'}}>성별</label>
-                  <div style={{display:'flex',gap:'8px'}}>
-                    {[{v:'male',l:'남아 👦'},{v:'female',l:'여아 👧'}].map(g => (
-                      <button key={g.v} onClick={() => setProfileForm((p: any) => ({...p, gender: g.v}))}
-                        style={{flex:1,padding:'10px',borderRadius:'var(--rs)',border:`1.5px solid ${profileForm.gender===g.v?'var(--primary)':'var(--border)'}`,background:profileForm.gender===g.v?'var(--primary-bg)':'var(--card)',color:profileForm.gender===g.v?'var(--primary)':'var(--txt2)',fontFamily:'inherit',cursor:'pointer',fontSize:'14px',fontWeight:profileForm.gender===g.v?700:400}}>
-                        {g.l}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+  <div style={{marginBottom:'12px'}}>
+    <label style={{display:'block',fontSize:'12px',color:'var(--txt2)',fontWeight:600,marginBottom:'5px'}}>성별</label>
+    <div style={{display:'flex',gap:'8px'}}>
+      {[{v:'male',l:'남아 👦'},{v:'female',l:'여아 👧'}].map(g=>(
+        <button key={g.v} onClick={()=>setProfileForm((p:any)=>({...p,gender:g.v}))}
+          style={{flex:1,padding:'10px',borderRadius:'var(--rs)',border:`1.5px solid ${profileForm.gender===g.v?'var(--primary)':'var(--border)'}`,background:profileForm.gender===g.v?'var(--primary-bg)':'var(--card)',color:profileForm.gender===g.v?'var(--primary)':'var(--txt2)',fontFamily:'inherit',cursor:'pointer',fontSize:'14px',fontWeight:profileForm.gender===g.v?700:400}}>
+          {g.l}
+        </button>
+      ))}
+    </div>
+  </div>
 
-                <div style={{marginBottom:'12px'}}>
-                  <label style={{display:'block',fontSize:'12px',color:'var(--txt2)',fontWeight:600,marginBottom:'5px'}}>수유 방식</label>
-                  <div style={{display:'flex',gap:'8px'}}>
-                    {[{v:'breast',l:'모유'},{v:'formula',l:'분유'},{v:'mixed',l:'혼합'}].map(f => (
-                      <button key={f.v} onClick={() => setProfileForm((p: any) => ({...p, feeding_type: f.v}))}
-                        style={{flex:1,padding:'10px',borderRadius:'var(--rs)',border:`1.5px solid ${profileForm.feeding_type===f.v?'var(--primary)':'var(--border)'}`,background:profileForm.feeding_type===f.v?'var(--primary-bg)':'var(--card)',color:profileForm.feeding_type===f.v?'var(--primary)':'var(--txt2)',fontFamily:'inherit',cursor:'pointer',fontSize:'13px',fontWeight:profileForm.feeding_type===f.v?700:400}}>
-                        {f.l}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+  <div style={{marginBottom:'12px'}}>
+    <label style={{display:'block',fontSize:'12px',color:'var(--txt2)',fontWeight:600,marginBottom:'5px'}}>수유 방식</label>
+    <div style={{display:'flex',gap:'8px'}}>
+      {[{v:'breast',l:'모유'},{v:'formula',l:'분유'},{v:'mixed',l:'혼합'}].map(f=>(
+        <button key={f.v} onClick={()=>setProfileForm((p:any)=>({...p,feeding_type:f.v}))}
+          style={{flex:1,padding:'10px',borderRadius:'var(--rs)',border:`1.5px solid ${profileForm.feeding_type===f.v?'var(--primary)':'var(--border)'}`,background:profileForm.feeding_type===f.v?'var(--primary-bg)':'var(--card)',color:profileForm.feeding_type===f.v?'var(--primary)':'var(--txt2)',fontFamily:'inherit',cursor:'pointer',fontSize:'13px',fontWeight:profileForm.feeding_type===f.v?700:400}}>
+          {f.l}
+        </button>
+      ))}
+    </div>
+  </div>
 
-                <div style={{marginBottom:'20px'}}>
-                  <label style={{display:'block',fontSize:'12px',color:'var(--txt2)',fontWeight:600,marginBottom:'5px'}}>혈액형</label>
-                  <select value={profileForm.blood_type || ''} onChange={e => setProfileForm((p: any) => ({...p, blood_type: e.target.value}))}
-                    style={{width:'100%',padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'var(--rs)',fontSize:'14px',fontFamily:'inherit',background:'var(--card)',color:'var(--txt)',outline:'none'}}>
-                    <option value=''>선택</option>
-                    {['A+','A-','B+','B-','O+','O-','AB+','AB-'].map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
+  <div style={{marginBottom:'20px'}}>
+    <label style={{display:'block',fontSize:'12px',color:'var(--txt2)',fontWeight:600,marginBottom:'5px'}}>혈액형</label>
+    <select value={profileForm.blood_type||''} onChange={e=>setProfileForm((p:any)=>({...p,blood_type:e.target.value}))}
+      style={{width:'100%',padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'var(--rs)',fontSize:'14px',fontFamily:'inherit',background:'var(--card)',color:'var(--txt)',outline:'none'}}>
+      <option value=''>선택</option>
+      {['A+','A-','B+','B-','O+','O-','AB+','AB-'].map(t=><option key={t} value={t}>{t}</option>)}
+    </select>
+  </div>
 
-                <button onClick={async () => {
-                  const { error } = await supabase.from('babies').update({
-                    name: profileForm.name,
-                    birth_date: profileForm.birth_date,
-                    gender: profileForm.gender,
-                    due_date: profileForm.due_date || null,
-                    birth_weight: profileForm.birth_weight ? Number(profileForm.birth_weight) : null,
-                    birth_height: profileForm.birth_height ? Number(profileForm.birth_height) : null,
-                    birth_head: profileForm.birth_head ? Number(profileForm.birth_head) : null,
-                    feeding_type: profileForm.feeding_type,
-                    blood_type: profileForm.blood_type || null,
-                    birth_hospital: profileForm.birth_hospital || null,
-                  }).eq('id', showBabyProfile.baby_id)
-                  if (error) { showToast('저장 실패'); return; }
-                  // drawerBabies 갱신
-                  const { data } = await supabase.from('baby_members').select('baby_id, role, babies(id, name, birth_date, gender, photo_url, due_date, birth_weight, birth_height, birth_head, feeding_type, blood_type, birth_hospital)').eq('user_id', currentUser.id)
-                  setDrawerBabies(data || [])
-                  setShowBabyProfile((prev: any) => ({ ...prev, babies: { ...prev.babies, ...profileForm } }))
-                  setEditingBaby(false)
-                  showToast('저장됨 ✅')
-                }} style={{width:'100%',padding:'14px',background:'var(--primary)',color:'#fff',border:'none',borderRadius:'var(--r)',fontSize:'15px',fontWeight:700,cursor:'pointer',fontFamily:'inherit',marginBottom:'10px'}}>
-                  저장
-                </button>
-                <button onClick={() => setEditingBaby(false)} style={{width:'100%',padding:'10px',background:'none',border:'none',fontSize:'14px',color:'var(--txt2)',cursor:'pointer',fontFamily:'inherit'}}>
-                  취소
-                </button>
-              </div>
-            )}
+  <button onClick={async()=>{
+    const {error}=await supabase.from('babies').update({
+      name:profileForm.name,birth_date:profileForm.birth_date,gender:profileForm.gender,
+      due_date:profileForm.due_date||null,birth_weight:profileForm.birth_weight?Number(profileForm.birth_weight):null,
+      birth_height:profileForm.birth_height?Number(profileForm.birth_height):null,
+      birth_head:profileForm.birth_head?Number(profileForm.birth_head):null,
+      feeding_type:profileForm.feeding_type,blood_type:profileForm.blood_type||null,
+      birth_hospital:profileForm.birth_hospital||null,
+    }).eq('id',showBabyProfile.baby_id)
+    if(error){showToast('저장 실패');return;}
+    const {data}=await supabase.from('baby_members').select('baby_id, role, babies(id, name, birth_date, gender, photo_url, due_date, birth_weight, birth_height, birth_head, feeding_type, blood_type, birth_hospital)').eq('user_id',currentUser.id)
+    const deduped=(data||[]).filter((m:any,i:number,arr:any[])=>arr.findIndex((x:any)=>x.baby_id===m.baby_id)===i)
+    setDrawerBabies(deduped)
+    setShowBabyProfile((prev:any)=>({...prev,babies:{...prev.babies,...profileForm}}))
+                showToast('저장됨 ✅')
+              }} style={{width:'100%',padding:'14px',background:'var(--primary)',color:'#fff',border:'none',borderRadius:'var(--r)',fontSize:'15px',fontWeight:700,cursor:'pointer',fontFamily:'inherit',marginBottom:'10px'}}>
+                저장
+              </button>
+              <button onClick={()=>{setShowBabyProfile(null)}} style={{width:'100%',padding:'10px',background:'none',border:'none',fontSize:'14px',color:'var(--txt2)',cursor:'pointer',fontFamily:'inherit'}}>
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       )}
