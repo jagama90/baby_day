@@ -6,4 +6,4 @@ export default function Dashboard() {
   const router = useRouter()
   useEffect(() => { router.replace('/log') }, [])
   return null
-}
+} 
