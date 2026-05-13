@@ -1083,7 +1083,7 @@ const handleLogout = async () => {
               <div className="hd-sub">{ageLabel}</div>
             </div>
             {showBabyPicker && drawerBabies.length > 1 && (
-              <div style={{position:'fixed',top:'60px',left:'60px',background:'var(--card)',borderRadius:'12px',boxShadow:'0 4px 20px rgba(0,0,0,.2)',zIndex:600,minWidth:'180px',overflow:'hidden'}}>
+              <div style={{position:'fixed',top:'60px',left:'60px',background:'var(--card)',borderRadius:'12px',boxShadow:'0 4px 20px rgba(0,0,0,.2)',zIndex:9999,minWidth:'180px',overflow:'hidden',pointerEvents:'all'}}>
                 {drawerBabies.map((m: any) => (
                   <div key={m.baby_id} onClick={() => {
                     router.push(`/log?babyId=${m.baby_id}`)
@@ -1367,6 +1367,11 @@ const handleLogout = async () => {
           <button className="voice-cancel" onClick={stopMic}>취소</button>
         </div>
       )}
+
+      {showBabyPicker && (
+      <div style={{position:'fixed',inset:0,zIndex:9998}} onClick={() => setShowBabyPicker(false)} />
+      )}
+      {/* NAVIGATION DRAWER */}
 
       {/* NAVIGATION DRAWER */}
       {showDrawer && (
