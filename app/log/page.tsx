@@ -775,52 +775,55 @@ useEffect(() => {
   const stopMic = () => { setIsListening(false); try { recogRef.current?.stop(); } catch (_) {} setShowVoice(false); };
 
   const handleVoice = async (txt: string) => {
-    const now = new Date(), iso = now.toISOString(), nowDs = fmtDate(now);
-    if (/삭제|취소|지워|잘못/.test(txt)) {
-      const last = [...records].sort((a, b) => b.start_time > a.start_time ? 1 : -1)[0];
-      if (last) { await apiDelete(last.id); setRecords(prev => prev.filter(r => r.id !== last.id)); showToast('🗑 방금 기록 삭제됨 (' + LABEL[last.type] + ')'); }
-      else showToast('삭제할 기록이 없어요'); return;
-    }
-    if (/수면\s*끝|잠\s*깼|기상|일어났/.test(txt)) {
-      const ongoing = records.find(r => r.type === 'sleep' && !r.end_time);
-      if (ongoing) { await apiPatch(ongoing.id, { end_time: iso }); showToast('수면 종료 · ' + durLabel(durMin(ongoing.start_time, iso))); await loadAll(); }
-      else showToast('진행 중인 수면이 없어요'); return;
-    }
-    if (/수면|잠|낮잠|밤잠/.test(txt)) {
-      const sk = /밤잠/.test(txt) ? 'night' : autoSleepKind(now);
-      const ongoingSleep = records.find(r => r.type === 'sleep' && !r.end_time);
-      if (ongoingSleep) { await apiPatch(ongoingSleep.id, { end_time: iso }); showToast('기존 수면 종료 → 새 수면 시작'); }
-      await apiPost({ type: 'sleep', date: nowDs, start_time: iso, sleep_kind: sk });
-      if (!ongoingSleep) showToast('😴 ' + (sk === 'nap' ? '낮잠' : '밤잠') + ' 시작');
-      await loadAll(); return;
-    }
-    if (/기저귀|소변|대변/.test(txt)) {
-      const kind = /대변/.test(txt) && /소변/.test(txt) ? 'both' : /대변/.test(txt) ? 'stool' : 'urine';
-      await apiPost({ type: 'diaper', date: nowDs, start_time: iso, diaper_kind: kind });
-      showToast('💧 ' + { urine: '소변', stool: '대변', both: '소변+대변' }[kind] + ' 기록됨');
-      await loadAll(); return;
-    }
-    if (/분유/.test(txt)) {
-      const m = txt.match(/(\d+)/); const ml = m ? parseInt(m[1]) : 0;
-      await apiPost({ type: 'formula', date: nowDs, start_time: iso, ml });
-      showToast('🍼 분유 ' + ml + 'ml 기록됨'); await loadAll(); return;
-    }
-    if (/목욕/.test(txt)) {
-    await apiPost({ type: 'bath', date: nowDs, start_time: iso });
-    showToast('🛁 목욕 기록됨');
-    await loadAll();
-    return;
-    }
-    if (/모유|수유/.test(txt)) {
-      const lm = txt.match(/왼(쪽)?\s*(\d+)/), rm = txt.match(/오른(쪽)?\s*(\d+)/);
-      let lMin = lm ? parseInt(lm[2]) : 0, rMin = rm ? parseInt(rm[2]) : 0;
-      if (!lMin && !rMin) { const nm = txt.match(/(\d+)\s*분?/); if (nm) lMin = parseInt(nm[1]); }
-      await apiPost({ type: 'breast', date: nowDs, start_time: iso, left_min: lMin, right_min: rMin });
-      const parts = []; if (lMin) parts.push('왼쪽 ' + lMin + '분'); if (rMin) parts.push('오른쪽 ' + rMin + '분');
-      showToast('🤱 모유 ' + (parts.join(' ') || '기록됨')); await loadAll(); return;
-    }
-    showToast('"' + txt + '" — 인식 실패');
-  };
+  const now = new Date(), iso = now.toISOString(), nowDs = fmtDate(now);
+  const voiceParams = new URLSearchParams(window.location.search)
+  const voiceBabyId = voiceParams.get('babyId')
+  if (!voiceBabyId) { showToast('아기를 먼저 등록해주세요'); return; }
+  const base = { baby_id: voiceBabyId, user_id: currentUser?.id };
+
+  if (/삭제|취소|지워|잘못/.test(txt)) {
+    const last = [...records].sort((a, b) => b.start_time > a.start_time ? 1 : -1)[0];
+    if (last) { await apiDelete(last.id); setRecords(prev => prev.filter(r => r.id !== last.id)); showToast('🗑 방금 기록 삭제됨 (' + LABEL[last.type] + ')'); }
+    else showToast('삭제할 기록이 없어요'); return;
+  }
+  if (/수면\s*끝|잠\s*깼|기상|일어났/.test(txt)) {
+    const ongoing = records.find(r => r.type === 'sleep' && !r.end_time);
+    if (ongoing) { await apiPatch(ongoing.id, { end_time: iso }); showToast('수면 종료 · ' + durLabel(durMin(ongoing.start_time, iso))); await loadAll(); }
+    else showToast('진행 중인 수면이 없어요'); return;
+  }
+  if (/수면|잠|낮잠|밤잠/.test(txt)) {
+    const sk = /밤잠/.test(txt) ? 'night' : autoSleepKind(now);
+    const ongoingSleep = records.find(r => r.type === 'sleep' && !r.end_time);
+    if (ongoingSleep) { await apiPatch(ongoingSleep.id, { end_time: iso }); showToast('기존 수면 종료 → 새 수면 시작'); }
+    await apiPost({ ...base, type: 'sleep', date: nowDs, start_time: iso, sleep_kind: sk });
+    if (!ongoingSleep) showToast('😴 ' + (sk === 'nap' ? '낮잠' : '밤잠') + ' 시작');
+    await loadAll(); return;
+  }
+  if (/기저귀|소변|대변/.test(txt)) {
+    const kind = /대변/.test(txt) && /소변/.test(txt) ? 'both' : /대변/.test(txt) ? 'stool' : 'urine';
+    await apiPost({ ...base, type: 'diaper', date: nowDs, start_time: iso, diaper_kind: kind });
+    showToast('💧 ' + { urine: '소변', stool: '대변', both: '소변+대변' }[kind] + ' 기록됨');
+    await loadAll(); return;
+  }
+  if (/분유/.test(txt)) {
+    const m = txt.match(/(\d+)/); const ml = m ? parseInt(m[1]) : 0;
+    await apiPost({ ...base, type: 'formula', date: nowDs, start_time: iso, ml });
+    showToast('🍼 분유 ' + ml + 'ml 기록됨'); await loadAll(); return;
+  }
+  if (/목욕/.test(txt)) {
+    await apiPost({ ...base, type: 'bath', date: nowDs, start_time: iso });
+    showToast('🛁 목욕 기록됨'); await loadAll(); return;
+  }
+  if (/모유|수유/.test(txt)) {
+    const lm = txt.match(/왼(쪽)?\s*(\d+)/), rm = txt.match(/오른(쪽)?\s*(\d+)/);
+    let lMin = lm ? parseInt(lm[2]) : 0, rMin = rm ? parseInt(rm[2]) : 0;
+    if (!lMin && !rMin) { const nm = txt.match(/(\d+)\s*분?/); if (nm) lMin = parseInt(nm[1]); }
+    await apiPost({ ...base, type: 'breast', date: nowDs, start_time: iso, left_min: lMin, right_min: rMin });
+    const parts = []; if (lMin) parts.push('왼쪽 ' + lMin + '분'); if (rMin) parts.push('오른쪽 ' + rMin + '분');
+    showToast('🤱 모유 ' + (parts.join(' ') || '기록됨')); await loadAll(); return;
+  }
+  showToast('"' + txt + '" — 인식 실패');
+};
 
   // ── EXPORT CSV ──
   const exportCSV = () => {
@@ -1066,15 +1069,14 @@ const handleLogout = async () => {
 
       {/* HEADER */}
       <div className="hd">
-        <div className="hd-top">
-          <div>
-            <div onClick={() => setShowDrawer(true)} style={{cursor:'pointer'}}>
-              <div className="hd-title">{hdTitle} <span style={{fontSize:'14px',opacity:.8}}>▾</span></div>
-              <div className="hd-sub" style={{borderBottom:'1px solid rgba(255,255,255,.4)',paddingBottom:'2px',display:'inline-block'}}>{ageLabel}</div>
-            </div>
-            ...
+        <div className="hd-top" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+          <div onClick={() => setShowDrawer(true)} style={{cursor:'pointer',flex:1}}>
+            <div className="hd-title">{hdTitle} <span style={{fontSize:'14px',opacity:.8}}>▾</span></div>
+            <div className="hd-sub">{ageLabel}</div>
+          </div>
+          <div className="hd-actions" style={{display:'flex',flexDirection:'row',gap:'8px',flexShrink:0}}>
             <button className="hd-btn" onClick={() => { setCalDate(new Date(selDate)); setShowCal(true); }}>📅</button>
-            <button className="hd-btn" onClick={() => setShowSettings(true)}>⚙️</button>  
+            <button className="hd-btn" onClick={() => setShowSettings(true)}>⚙️</button>
           </div>
         </div>
         <div className="sync-bar">
