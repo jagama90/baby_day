@@ -12,7 +12,7 @@ export default function Home() {
       if (user) router.push('/dashboard')
       else router.push('/login')
     }
-  }, [user, loading])
+  }, [user, loading, router])
 
   return (
     <div className="min-h-screen flex items-center justify-center">

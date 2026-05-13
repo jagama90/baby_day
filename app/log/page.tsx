@@ -194,9 +194,16 @@ function LogPageInner() {
   const [patternMsgs, setPatternMsgs] = useState<string[]>([]);
   const [patternIdx, setPatternIdx] = useState(0);
   const [patternVisible, setPatternVisible] = useState(true);
+  const [nowTs, setNowTs] = useState(() => Date.now());
 
   const recogRef = useRef<any>(null);
   const sleepTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const iv = setInterval(() => setNowTs(Date.now()), 60000);
+    return () => clearInterval(iv);
+  }, []);
+
 
   // ── SECURE MSG ROTATION ──
   useEffect(() => {
@@ -224,7 +231,7 @@ useEffect(() => {
   return () => {
     document.body.style.overflow = '';
   };
-}, [showModal, showSettings, showCal, editFormula, editBreast, editDiaper, editSleep, showVoice]);
+}, [showModal, showSettings, showCal, editFormula, editBreast, editDiaper, editSleep, showVoice, showDrawer, showBabyProfile]);
 
 
   // ── LOAD SETTINGS ──
@@ -1499,14 +1506,14 @@ const handleLogout = async () => {
           <div style={{width:'100%',maxHeight:'92vh',background:'var(--card)',borderRadius:'24px 24px 0 0',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
             <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}} />
 
-            /* 보기+수정 통합 — 항상 수정 가능 */
+            {/* 보기+수정 통합 — 항상 수정 가능 */}
 <div style={{padding:'16px 20px 40px'}}>
   <div style={{fontSize:'17px',fontWeight:700,textAlign:'center',marginBottom:'20px'}}>아기 프로필</div>
 
   {/* 기념일 */}
   {showBabyProfile.babies?.birth_date && (() => {
     const birth = new Date(showBabyProfile.babies.birth_date)
-    const diff = Math.floor((Date.now() - birth.getTime()) / 86400000)
+    const diff = Math.floor((nowTs - birth.getTime()) / 86400000)
     const weeks = Math.floor(diff / 7)
     const milestones = [100,200,365,500,1000].map(d => ({
       label: `D+${d}`,
@@ -1921,7 +1928,7 @@ const handleLogout = async () => {
               <div className="drag-bar" style={{ marginBottom: '16px' }}></div>
               <div style={{ fontSize: '16px', fontWeight: 700, textAlign: 'center', marginBottom: '8px' }}>😴 수면 수정</div>
               {!editSleep.end_time
-                ? <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--sleep)', fontWeight: 600, marginBottom: '14px' }}>⏱ {durLabel(Math.floor((Date.now() - new Date(editSleep.start_time).getTime()) / 60000))} 경과 중</div>
+                                ? <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--sleep)', fontWeight: 600, marginBottom: '14px' }}>⏱ {durLabel(Math.floor((nowTs - new Date(editSleep.start_time).getTime()) / 60000))} 경과 중</div>
                 : <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--txt2)', marginBottom: '14px' }}>총 {durLabel(durMin(editSleep.start_time, editSleep.end_time))}</div>
               }
               <div style={{ fontSize: '12px', color: 'var(--txt2)', fontWeight: 600, marginBottom: '6px' }}>시작 시간</div>

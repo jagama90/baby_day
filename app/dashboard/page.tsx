@@ -4,6 +4,6 @@ import { useRouter } from 'next/navigation'
 
 export default function Dashboard() {
   const router = useRouter()
-  useEffect(() => { router.replace('/log') }, [])
+  useEffect(() => { router.replace('/log') }, [router])
   return null
 } 
