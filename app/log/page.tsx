@@ -817,8 +817,9 @@ useEffect(() => {
   }
   if (/모유|수유/.test(txt)) {
     const lm = txt.match(/왼(쪽)?\s*(\d+)/), rm = txt.match(/오른(쪽)?\s*(\d+)/);
+    const totalM = txt.match(/(\d+)\s*분/);
     let lMin = lm ? parseInt(lm[2]) : 0, rMin = rm ? parseInt(rm[2]) : 0;
-    if (!lMin && !rMin) { const nm = txt.match(/(\d+)\s*분?/); if (nm) lMin = parseInt(nm[1]); }
+    if (!lMin && !rMin && totalM) lMin = parseInt(totalM[1]);
     await apiPost({ ...base, type: 'breast', date: nowDs, start_time: iso, left_min: lMin, right_min: rMin });
     const parts = []; if (lMin) parts.push('왼쪽 ' + lMin + '분'); if (rMin) parts.push('오른쪽 ' + rMin + '분');
     showToast('🤱 모유 ' + (parts.join(' ') || '기록됨')); await loadAll(); return;
@@ -1082,7 +1083,7 @@ const handleLogout = async () => {
               <div className="hd-sub">{ageLabel}</div>
             </div>
             {showBabyPicker && drawerBabies.length > 1 && (
-              <div style={{position:'absolute',top:'100%',left:0,marginTop:'8px',background:'var(--card)',borderRadius:'12px',boxShadow:'0 4px 20px rgba(0,0,0,.15)',zIndex:100,minWidth:'160px',overflow:'hidden'}}>
+              <div style={{position:'fixed',top:'60px',left:'60px',background:'var(--card)',borderRadius:'12px',boxShadow:'0 4px 20px rgba(0,0,0,.2)',zIndex:600,minWidth:'180px',overflow:'hidden'}}>
                 {drawerBabies.map((m: any) => (
                   <div key={m.baby_id} onClick={() => {
                     router.push(`/log?babyId=${m.baby_id}`)
