@@ -7,27 +7,34 @@ import { BabyRecord, EMOJI, LABEL, breastToFormulaMl, detail, elapsed, fmtDate, 
 
 
 // ── SUPABASE CONFIG ──
-const SUPA_URL = 'https://yaxrymvpbvcpxbfqvzen.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlheHJ5bXZwYnZjcHhiZnF2emVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzOTM4MDUsImV4cCI6MjA5Mzk2OTgwNX0.f6ESGyRoclBzK_O8lptqP6ZOjFQwj_8tQJ9bEcuxOOQ';
-const H: Record<string, string> = { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY };
+const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPA_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+function getHeaders() {
+  if (!SUPA_URL || !SUPA_KEY) throw new Error('Supabase env vars are missing');
+  return {
+    'Content-Type': 'application/json',
+    apikey: SUPA_KEY,
+    Authorization: 'Bearer ' + SUPA_KEY,
+  } as Record<string, string>;
+}
 async function apiGet(p: string) {
-  const r = await fetch(SUPA_URL + '/rest/v1/' + p, { headers: { ...H, Prefer: 'return=representation' } });
+  const r = await fetch(SUPA_URL + '/rest/v1/' + p, { headers: { ...getHeaders(), Prefer: 'return=representation' } });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function apiPost(d: Record<string, unknown>) {
-  const r = await fetch(SUPA_URL + '/rest/v1/baby_logs', { method: 'POST', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify(d) });
+  const r = await fetch(SUPA_URL + '/rest/v1/baby_logs', { method: 'POST', headers: { ...getHeaders(), Prefer: 'return=representation' }, body: JSON.stringify(d) });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function apiPatch(id: string, d: Record<string, unknown>) {
-  const r = await fetch(SUPA_URL + '/rest/v1/baby_logs?id=eq.' + id, { method: 'PATCH', headers: { ...H, Prefer: 'return=representation' }, body: JSON.stringify(d) });
+  const r = await fetch(SUPA_URL + '/rest/v1/baby_logs?id=eq.' + id, { method: 'PATCH', headers: { ...getHeaders(), Prefer: 'return=representation' }, body: JSON.stringify(d) });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function apiDelete(id: string) {
-  const r = await fetch(SUPA_URL + '/rest/v1/baby_logs?id=eq.' + id, { method: 'DELETE', headers: H });
+  const r = await fetch(SUPA_URL + '/rest/v1/baby_logs?id=eq.' + id, { method: 'DELETE', headers: getHeaders() });
   if (!r.ok) throw new Error(await r.text());
 }
 
@@ -355,6 +362,12 @@ useEffect(() => {
 
   // ── REALTIME ──
   useEffect(() => {
+    if (!SUPA_URL || !SUPA_KEY) {
+      setSyncState('off');
+      setSyncTxt('환경설정 필요');
+      return;
+    }
+
     const wsUrl = SUPA_URL.replace('https', 'wss') + '/realtime/v1/websocket?apikey=' + SUPA_KEY + '&vsn=1.0.0';
     let ws: WebSocket;
     function connect() {

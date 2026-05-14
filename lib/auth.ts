@@ -1,10 +1,17 @@
 import { supabase } from './supabase'
+const getAuthRedirectUrl = () => {
+  const explicit = process.env.NEXT_PUBLIC_AUTH_REDIRECT_URL
+  if (explicit) return explicit
+  if (typeof window !== 'undefined') return `${window.location.origin}/auth/callback`
+  return ''
+}
+
 
 export const signInWithKakao = async () => {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'kakao',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: getAuthRedirectUrl(),
       skipBrowserRedirect: false,
       queryParams: {
         response_type: 'code',
@@ -17,7 +24,7 @@ export const signInWithKakao = async () => {
 export const signInWithGoogle = async () => {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${window.location.origin}/auth/callback` }
+    options: { redirectTo: getAuthRedirectUrl() }
   })
   if (error) console.error(error)
 }
@@ -27,11 +34,17 @@ export const signOut = async () => await supabase.auth.signOut()
 export const signOutAll = async () => await supabase.auth.signOut({ scope: 'global' })
 
 export const deleteAccount = async () => {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  const [{ data: { user } }, { data: { session } }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.auth.getSession(),
+  ])
+  if (!user || !session?.access_token) return
 
-  const SERVICE_ROLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
-  const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+
+  if (!SUPA_URL) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not configured')
+  }
 
   // users 테이블 삭제 표시
   await supabase.from('users').update({ deleted_at: new Date().toISOString() }).eq('id', user.id)
@@ -43,7 +56,7 @@ export const deleteAccount = async () => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`
+      Authorization: `Bearer ${session.access_token}`
     },
     body
   })
