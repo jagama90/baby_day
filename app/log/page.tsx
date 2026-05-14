@@ -4,39 +4,10 @@ import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { BabyRecord, EMOJI, LABEL, breastToFormulaMl, detail, elapsed, fmtDate, fmtTime, nowTime, todayStr } from '@/lib/logs'
+import { createBabyLog, deleteBabyLog, getBabyLogs, patchBabyLog } from '@/lib/babyLogApi'
 
-
-// ── SUPABASE CONFIG ──
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPA_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-function getHeaders() {
-  if (!SUPA_URL || !SUPA_KEY) throw new Error('Supabase env vars are missing');
-  return {
-    'Content-Type': 'application/json',
-    apikey: SUPA_KEY,
-    Authorization: 'Bearer ' + SUPA_KEY,
-  } as Record<string, string>;
-}
-async function apiGet(p: string) {
-  const r = await fetch(SUPA_URL + '/rest/v1/' + p, { headers: { ...getHeaders(), Prefer: 'return=representation' } });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function apiPost(d: Record<string, unknown>) {
-  const r = await fetch(SUPA_URL + '/rest/v1/baby_logs', { method: 'POST', headers: { ...getHeaders(), Prefer: 'return=representation' }, body: JSON.stringify(d) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function apiPatch(id: string, d: Record<string, unknown>) {
-  const r = await fetch(SUPA_URL + '/rest/v1/baby_logs?id=eq.' + id, { method: 'PATCH', headers: { ...getHeaders(), Prefer: 'return=representation' }, body: JSON.stringify(d) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function apiDelete(id: string) {
-  const r = await fetch(SUPA_URL + '/rest/v1/baby_logs?id=eq.' + id, { method: 'DELETE', headers: getHeaders() });
-  if (!r.ok) throw new Error(await r.text());
-}
 
 type Settings = {
   babyName: string;
@@ -218,7 +189,7 @@ useEffect(() => {
       const params = new URLSearchParams(window.location.search)
       const babyId = params.get('babyId')
       if (!babyId) { setSyncState('on'); setSyncTxt('실시간 동기화 중'); setRecords([]); return; }
-      const data = await apiGet(`baby_logs?baby_id=eq.${babyId}&order=start_time.desc,created_at.desc&limit=1000`)
+      const data = await getBabyLogs(babyId)
       setRecords(data);
       setSyncState('on'); setSyncTxt('실시간 동기화 중');
     } catch (e: unknown) {
@@ -575,7 +546,7 @@ useEffect(() => {
   // ── EXPOSE GLOBAL HANDLERS ──
   useEffect(() => {
     (window as unknown as Record<string, unknown>)._delRec = async (id: string) => {
-      try { await apiDelete(id); setRecords(prev => prev.filter(r => r.id !== id)); showToast('삭제됨'); } catch (_) { showToast('삭제 실패'); }
+      try { await deleteBabyLog(id); setRecords(prev => prev.filter(r => r.id !== id)); showToast('삭제됨'); } catch (_) { showToast('삭제 실패'); }
     };
   }, []);
 
@@ -624,7 +595,7 @@ useEffect(() => {
     if (type === 'sleep') {
       const ongoing = records.find(r => r.type === 'sleep' && !r.end_time);
       if (ongoing) {
-        try { await apiPatch(ongoing.id, { end_time: iso }); showToast('수면 종료 · ' + durLabel(durMin(ongoing.start_time, iso))); await loadAll(); } catch (e: unknown) { showToast('오류: ' + (e instanceof Error ? e.message : '')); }
+        try { await patchBabyLog(ongoing.id, { end_time: iso }); showToast('수면 종료 · ' + durLabel(durMin(ongoing.start_time, iso))); await loadAll(); } catch (e: unknown) { showToast('오류: ' + (e instanceof Error ? e.message : '')); }
         return;
       }
     }
@@ -634,7 +605,7 @@ useEffect(() => {
     const rec: Record<string, unknown> = { type, date: nowDs, start_time: iso, baby_id: babyId, user_id: currentUser?.id };
     if (type === 'sleep') rec.sleep_kind = autoSleepKind(now);
     if (type === 'diaper') rec.diaper_kind = diaperKind || 'urine';
-    try { await apiPost(rec); setSelDate(now); showToast(EMOJI[type] + ' ' + LABEL[type] + ' 기록됨'); await loadAll(); } catch (e: unknown) { showToast('오류: ' + (e instanceof Error ? e.message : '')); }
+    try { await createBabyLog(rec); setSelDate(now); showToast(EMOJI[type] + ' ' + LABEL[type] + ' 기록됨'); await loadAll(); } catch (e: unknown) { showToast('오류: ' + (e instanceof Error ? e.message : '')); }
   };
 
   // ── OPEN MODAL ──
@@ -687,12 +658,12 @@ useEffect(() => {
       if (modalHMemo) rec.memo = modalHMemo;
     }
     setShowModal(false);
-    try { await apiPost(rec); showToast(EMOJI[modalType] + ' 저장됨'); await loadAll(); } catch (e: unknown) { showToast('저장 실패: ' + (e instanceof Error ? e.message : '')); }
+    try { await createBabyLog(rec); showToast(EMOJI[modalType] + ' 저장됨'); await loadAll(); } catch (e: unknown) { showToast('저장 실패: ' + (e instanceof Error ? e.message : '')); }
   };
 
   // ── DELETE ──
   const delRec = async (id: string) => {
-    try { await apiDelete(id); setRecords(prev => prev.filter(r => r.id !== id)); showToast('삭제됨'); } catch (_) { showToast('삭제 실패'); }
+    try { await deleteBabyLog(id); setRecords(prev => prev.filter(r => r.id !== id)); showToast('삭제됨'); } catch (_) { showToast('삭제 실패'); }
   };
 
   // ── CALENDAR ──
@@ -740,35 +711,35 @@ useEffect(() => {
 
   if (/삭제|취소|지워|잘못/.test(txt)) {
     const last = [...records].sort((a, b) => b.start_time > a.start_time ? 1 : -1)[0];
-    if (last) { await apiDelete(last.id); setRecords(prev => prev.filter(r => r.id !== last.id)); showToast('🗑 방금 기록 삭제됨 (' + LABEL[last.type] + ')'); }
+    if (last) { await deleteBabyLog(last.id); setRecords(prev => prev.filter(r => r.id !== last.id)); showToast('🗑 방금 기록 삭제됨 (' + LABEL[last.type] + ')'); }
     else showToast('삭제할 기록이 없어요'); return;
   }
   if (/수면\s*끝|잠\s*깼|기상|일어났/.test(txt)) {
     const ongoing = records.find(r => r.type === 'sleep' && !r.end_time);
-    if (ongoing) { await apiPatch(ongoing.id, { end_time: iso }); showToast('수면 종료 · ' + durLabel(durMin(ongoing.start_time, iso))); await loadAll(); }
+    if (ongoing) { await patchBabyLog(ongoing.id, { end_time: iso }); showToast('수면 종료 · ' + durLabel(durMin(ongoing.start_time, iso))); await loadAll(); }
     else showToast('진행 중인 수면이 없어요'); return;
   }
   if (/수면|잠|낮잠|밤잠/.test(txt)) {
     const sk = /밤잠/.test(txt) ? 'night' : autoSleepKind(now);
     const ongoingSleep = records.find(r => r.type === 'sleep' && !r.end_time);
-    if (ongoingSleep) { await apiPatch(ongoingSleep.id, { end_time: iso }); showToast('기존 수면 종료 → 새 수면 시작'); }
-    await apiPost({ ...base, type: 'sleep', date: nowDs, start_time: iso, sleep_kind: sk });
+    if (ongoingSleep) { await patchBabyLog(ongoingSleep.id, { end_time: iso }); showToast('기존 수면 종료 → 새 수면 시작'); }
+    await createBabyLog({ ...base, type: 'sleep', date: nowDs, start_time: iso, sleep_kind: sk });
     if (!ongoingSleep) showToast('😴 ' + (sk === 'nap' ? '낮잠' : '밤잠') + ' 시작');
     await loadAll(); return;
   }
   if (/기저귀|소변|대변/.test(txt)) {
     const kind = /대변/.test(txt) && /소변/.test(txt) ? 'both' : /대변/.test(txt) ? 'stool' : 'urine';
-    await apiPost({ ...base, type: 'diaper', date: nowDs, start_time: iso, diaper_kind: kind });
+    await createBabyLog({ ...base, type: 'diaper', date: nowDs, start_time: iso, diaper_kind: kind });
     showToast('💧 ' + { urine: '소변', stool: '대변', both: '소변+대변' }[kind] + ' 기록됨');
     await loadAll(); return;
   }
   if (/분유/.test(txt)) {
     const m = txt.match(/(\d+)/); const ml = m ? parseInt(m[1]) : 0;
-    await apiPost({ ...base, type: 'formula', date: nowDs, start_time: iso, ml });
+    await createBabyLog({ ...base, type: 'formula', date: nowDs, start_time: iso, ml });
     showToast('🍼 분유 ' + ml + 'ml 기록됨'); await loadAll(); return;
   }
   if (/목욕/.test(txt)) {
-    await apiPost({ ...base, type: 'bath', date: nowDs, start_time: iso });
+    await createBabyLog({ ...base, type: 'bath', date: nowDs, start_time: iso });
     showToast('🛁 목욕 기록됨'); await loadAll(); return;
   }
   if (/모유|수유/.test(txt)) {
@@ -776,7 +747,7 @@ useEffect(() => {
     const totalM = txt.match(/(\d+)\s*분/);
     let lMin = lm ? parseInt(lm[2]) : 0, rMin = rm ? parseInt(rm[2]) : 0;
     if (!lMin && !rMin && totalM) lMin = parseInt(totalM[1]);
-    await apiPost({ ...base, type: 'breast', date: nowDs, start_time: iso, left_min: lMin, right_min: rMin });
+    await createBabyLog({ ...base, type: 'breast', date: nowDs, start_time: iso, left_min: lMin, right_min: rMin });
     const parts = []; if (lMin) parts.push('왼쪽 ' + lMin + '분'); if (rMin) parts.push('오른쪽 ' + rMin + '분');
     showToast('🤱 모유 ' + (parts.join(' ') || '기록됨')); await loadAll(); return;
   }
@@ -1790,7 +1761,7 @@ const handleLogout = async () => {
               </div>
               <button className="save-btn" onClick={async () => {
                 const newIso = editFormula.date + 'T' + editStartTime + ':00+09:00';
-                try { await apiPatch(editFormula.id, { ml: editMl, start_time: newIso }); setRecords(prev => prev.map(r => r.id === editFormula!.id ? { ...r, ml: editMl, start_time: newIso } : r)); setEditFormula(null); showToast('🍼 분유 수정됨'); } catch (_) { showToast('저장 실패'); }
+                try { await patchBabyLog(editFormula.id, { ml: editMl, start_time: newIso }); setRecords(prev => prev.map(r => r.id === editFormula!.id ? { ...r, ml: editMl, start_time: newIso } : r)); setEditFormula(null); showToast('🍼 분유 수정됨'); } catch (_) { showToast('저장 실패'); }
               }}>저장</button>
               <button className="cancel-btn" onClick={() => setEditFormula(null)}>취소</button>
             </div>
@@ -1827,7 +1798,7 @@ const handleLogout = async () => {
               </div>
               <button className="save-btn" onClick={async () => {
                 const newIso = editBreast.date + 'T' + editStartTime + ':00+09:00';
-                try { await apiPatch(editBreast.id, { left_min: editLeftMin, right_min: editRightMin, start_time: newIso }); setRecords(prev => prev.map(r => r.id === editBreast!.id ? { ...r, left_min: editLeftMin, right_min: editRightMin, start_time: newIso } : r)); setEditBreast(null); showToast('🤱 모유 수정됨'); } catch (_) { showToast('저장 실패'); }
+                try { await patchBabyLog(editBreast.id, { left_min: editLeftMin, right_min: editRightMin, start_time: newIso }); setRecords(prev => prev.map(r => r.id === editBreast!.id ? { ...r, left_min: editLeftMin, right_min: editRightMin, start_time: newIso } : r)); setEditBreast(null); showToast('🤱 모유 수정됨'); } catch (_) { showToast('저장 실패'); }
               }}>저장</button>
               <button className="cancel-btn" onClick={() => setEditBreast(null)}>취소</button>
             </div>
@@ -1861,7 +1832,7 @@ const handleLogout = async () => {
               </div>
               <button className="save-btn" onClick={async () => {
                 const newIso = editDiaper.date + 'T' + editStartTime + ':00+09:00';
-                try { await apiPatch(editDiaper.id, { diaper_kind: editDK, start_time: newIso }); setRecords(prev => prev.map(r => r.id === editDiaper!.id ? { ...r, diaper_kind: editDK, start_time: newIso } : r)); setEditDiaper(null); showToast('💧 기저귀 수정됨'); } catch (_) { showToast('저장 실패'); }
+                try { await patchBabyLog(editDiaper.id, { diaper_kind: editDK, start_time: newIso }); setRecords(prev => prev.map(r => r.id === editDiaper!.id ? { ...r, diaper_kind: editDK, start_time: newIso } : r)); setEditDiaper(null); showToast('💧 기저귀 수정됨'); } catch (_) { showToast('저장 실패'); }
               }}>저장</button>
               <button className="cancel-btn" onClick={() => setEditDiaper(null)}>취소</button>
             </div>
@@ -1916,7 +1887,7 @@ const handleLogout = async () => {
                   patch.end_time = fmtDate(endDate) + 'T' + editEndTime + ':00+09:00';
                 } else { patch.end_time = null; }
                 try {
-                  await apiPatch(editSleep.id, patch);
+                  await patchBabyLog(editSleep.id, patch);
                   setRecords(prev => prev.map(r => r.id === editSleep!.id ? { ...r, start_time: newStart, end_time: (patch.end_time as string) || undefined } : r));
                   setEditSleep(null); showToast('😴 수면 수정됨');
                 } catch (_) { showToast('저장 실패'); }
