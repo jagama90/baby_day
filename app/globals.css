@@ -125,3 +125,11 @@ body.dark {
 .memo-text{font-size:11px;color:var(--txt3);margin-top:3px;font-style:italic}
 .empty{text-align:center;padding:60px 20px;color:var(--txt3)}
 .empty-e{font-size:44px;margin-bottom:12px}
+/* Native-friendly viewport handling for notch/home-indicator devices */
+body {
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}

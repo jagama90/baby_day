@@ -1,8 +1,14 @@
+import { Capacitor } from '@capacitor/core'
 import { clearStoredValues } from './platformStorage'
 import { supabase } from './supabase'
 const getAuthRedirectUrl = () => {
   const explicit = process.env.NEXT_PUBLIC_AUTH_REDIRECT_URL
   if (explicit) return explicit
+  
+  if (Capacitor.isNativePlatform()) {
+    return 'https://localhost/auth/callback'
+  }
+
   if (typeof window !== 'undefined') return `${window.location.origin}/auth/callback`
   return ''
 }
