@@ -20,22 +20,19 @@ const DEFAULT_SETTINGS: AppSettings = {
   avgFormulaMl: '',
 }
 
-export const loadSettingsFromStorage = (): AppSettings => {
-  if (typeof window === 'undefined') return DEFAULT_SETTINGS
+import { getStoredValue, setStoredValue } from './platformStorage'
 
-  return {
-    babyName: localStorage.getItem('babyName') || DEFAULT_SETTINGS.babyName,
-    babyBirth: localStorage.getItem('babyBirth') || DEFAULT_SETTINGS.babyBirth,
-    formulaGoal: localStorage.getItem('formulaGoal') || DEFAULT_SETTINGS.formulaGoal,
-    feedWarnHour: localStorage.getItem('feedWarnHour') || DEFAULT_SETTINGS.feedWarnHour,
-    darkMode: localStorage.getItem('darkMode') || DEFAULT_SETTINGS.darkMode,
-    pushEnabled: localStorage.getItem('pushEnabled') || DEFAULT_SETTINGS.pushEnabled,
-    babyWeight: localStorage.getItem('babyWeight') || DEFAULT_SETTINGS.babyWeight,
-    avgFormulaMl: localStorage.getItem('avgFormulaMl') || DEFAULT_SETTINGS.avgFormulaMl,
-  }
-}
+export const loadSettingsFromStorage = async (): Promise<AppSettings> => ({
+  babyName: (await getStoredValue('babyName')) || DEFAULT_SETTINGS.babyName,
+  babyBirth: (await getStoredValue('babyBirth')) || DEFAULT_SETTINGS.babyBirth,
+  formulaGoal: (await getStoredValue('formulaGoal')) || DEFAULT_SETTINGS.formulaGoal,
+  feedWarnHour: (await getStoredValue('feedWarnHour')) || DEFAULT_SETTINGS.feedWarnHour,
+  darkMode: (await getStoredValue('darkMode')) || DEFAULT_SETTINGS.darkMode,
+  pushEnabled: (await getStoredValue('pushEnabled')) || DEFAULT_SETTINGS.pushEnabled,
+  babyWeight: (await getStoredValue('babyWeight')) || DEFAULT_SETTINGS.babyWeight,
+  avgFormulaMl: (await getStoredValue('avgFormulaMl')) || DEFAULT_SETTINGS.avgFormulaMl,
+})
 
-export const saveSettingToStorage = (key: keyof AppSettings, value: string) => {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(key, value)
+export const saveSettingToStorage = async (key: keyof AppSettings, value: string) => {
+  await setStoredValue(key, value)
 }

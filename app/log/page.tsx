@@ -141,8 +141,8 @@ useEffect(() => {
 
 
   // ── LOAD SETTINGS ──
-  const loadSettings = useCallback(() => {
-    const s = loadSettingsFromStorage();
+  const loadSettings = useCallback(async () => {
+    const s = await loadSettingsFromStorage();
     setSettings(s);
     if (s.darkMode === '1') { setDarkMode(true); document.body.classList.add('dark'); }
     setSName(s.babyName);
@@ -154,8 +154,8 @@ useEffect(() => {
     return s;
   }, []);
 
-  const saveSetting = (k: keyof Settings, v: string) => {
-    saveSettingToStorage(k, v);
+  const saveSetting = async (k: keyof Settings, v: string) => {
+    await saveSettingToStorage(k, v);
     setSettings(prev => ({ ...prev, [k]: v }));
   };
 
@@ -182,8 +182,12 @@ useEffect(() => {
   }, []);
 
   useEffect(() => {
-  const s = loadSettings();
-  loadAll(s);
+  const initialize = async () => {
+    const s = await loadSettings();
+    await loadAll(s);
+  }
+
+  initialize();
   // 현재 유저 + 아기 목록 로드
   supabase.auth.getUser().then(({ data: { user } }) => {
     setCurrentUser(user)

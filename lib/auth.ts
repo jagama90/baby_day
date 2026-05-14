@@ -1,3 +1,4 @@
+import { clearStoredValues } from './platformStorage'
 import { supabase } from './supabase'
 const getAuthRedirectUrl = () => {
   const explicit = process.env.NEXT_PUBLIC_AUTH_REDIRECT_URL
@@ -62,6 +63,6 @@ export const deleteAccount = async () => {
   })
   const result = await res.json()
   console.log('탈퇴 결과:', result)
-  localStorage.clear()
+  await clearStoredValues()
   await supabase.auth.signOut()
 }
