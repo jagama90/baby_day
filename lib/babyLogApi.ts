@@ -29,4 +29,3 @@ export const deleteBabyLog = async (id: string) => {
   const { error } = await supabase.from('baby_logs').delete().eq('id', id)
   if (error) throw error
 }
-

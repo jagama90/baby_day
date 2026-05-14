@@ -5,20 +5,12 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { BabyRecord, EMOJI, LABEL, breastToFormulaMl, detail, elapsed, fmtDate, fmtTime, nowTime, todayStr } from '@/lib/logs'
 import { createBabyLog, deleteBabyLog, getBabyLogs, patchBabyLog } from '@/lib/babyLogApi'
+import { AppSettings, loadSettingsFromStorage, saveSettingToStorage } from '@/lib/settingsStore'
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPA_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-type Settings = {
-  babyName: string;
-  babyBirth: string;
-  formulaGoal: string;
-  feedWarnHour: string;
-  darkMode: string;
-  pushEnabled: string;
-  babyWeight: string;
-  avgFormulaMl: string;
-};
+type Settings = AppSettings
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const durMin = (s: string, e: string) => Math.round((new Date(e).getTime() - new Date(s).getTime()) / 60000);
@@ -150,16 +142,7 @@ useEffect(() => {
 
   // ── LOAD SETTINGS ──
   const loadSettings = useCallback(() => {
-    const s: Settings = {
-      babyName: localStorage.getItem('babyName') || '',
-      babyBirth: localStorage.getItem('babyBirth') || '',
-      formulaGoal: localStorage.getItem('formulaGoal') || '',
-      feedWarnHour: localStorage.getItem('feedWarnHour') || '3',
-      darkMode: localStorage.getItem('darkMode') || '0',
-      pushEnabled: localStorage.getItem('pushEnabled') || '0',
-      babyWeight: localStorage.getItem('babyWeight') || '',
-      avgFormulaMl: localStorage.getItem('avgFormulaMl') || '',
-    };
+    const s = loadSettingsFromStorage();
     setSettings(s);
     if (s.darkMode === '1') { setDarkMode(true); document.body.classList.add('dark'); }
     setSName(s.babyName);
@@ -172,7 +155,7 @@ useEffect(() => {
   }, []);
 
   const saveSetting = (k: keyof Settings, v: string) => {
-    localStorage.setItem(k, v);
+    saveSettingToStorage(k, v);
     setSettings(prev => ({ ...prev, [k]: v }));
   };
 
