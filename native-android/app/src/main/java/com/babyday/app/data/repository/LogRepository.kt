@@ -13,7 +13,13 @@ class LogRepository {
 
     private val client get() = SupabaseClientProvider.client
 
-    suspend fun getLogs(babyId: String): List<BabyRecord> {
+    
+    sealed class LogFetchResult {
+        data class Fresh(val data: List<BabyRecord>) : LogFetchResult()
+        data class Cached(val data: List<BabyRecord>, val reason: Throwable) : LogFetchResult()
+    }
+
+    suspend fun getLogs(babyId: String): LogFetchResult {
         return try {
             val fresh = client.from("baby_logs")
                 .select {

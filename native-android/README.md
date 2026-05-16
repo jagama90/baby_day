@@ -34,3 +34,8 @@ Kotlin + Jetpack Compose 기반 순수 Android 네이티브 앱.
 
 Supabase 대시보드 → Authentication → URL Configuration에
 `babyday://auth/callback` 을 Redirect URL로 추가해야 합니다.
+
+## Runtime Source of Truth
+- Mobile production app: native-android
+- Web(Next.js): admin/landing/보조 기능
+- 로그 도메인 정책은 native 기준으로 우선 반영

@@ -15,6 +15,16 @@ import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import com.babyday.app.domain.ComputePatternMessagesUseCase
+
+private val isoFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+
+private fun nowIso(): String {
+    return OffsetDateTime.now(ZoneId.systemDefault()).format(isoFormatter)
+}
 
 data class PatternMessage(val text: String)
 
@@ -68,9 +78,19 @@ class LogViewModel : ViewModel() {
     fun loadLogs(babyId: String) {
         viewModelScope.launch {
             _syncState.value = SyncState.LOADING
-            runCatching { logRepo.getLogs(babyId) }
-                .onSuccess { _records.value = it; _syncState.value = SyncState.CONNECTED; computePatterns() }
-                .onFailure { _syncState.value = SyncState.DISCONNECTED }
+            when (val result = logRepo.getLogs(babyId)) {
+                is LogFetchResult.Fresh -> {
+                    _records.value = result.data
+                    _syncState.value = SyncState.CONNECTED
+                    computePatterns()
+                }
+                is LogFetchResult.Cached -> {
+                    _records.value = result.data
+                    _syncState.value = SyncState.DISCONNECTED
+                    showToast("오프라인 캐시 표시 중")
+                    computePatterns()
+                }
+            }
         }
     }
 
@@ -91,7 +111,7 @@ class LogViewModel : ViewModel() {
         val userId = SupabaseClientProvider.client.auth.currentUserOrNull()?.id ?: return
         viewModelScope.launch {
             val now = java.util.Date()
-            val iso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss+09:00", java.util.Locale.getDefault()).format(now)
+            val iso = nowIso()
             val ds  = DateUtils.fmtDate(now)
             if (type == "sleep") {
                 val ongoing = _records.value.find { it.type == "sleep" && it.endTime == null }
@@ -372,33 +392,14 @@ class LogViewModel : ViewModel() {
     // ─── PATTERN PREDICTION ───────────────────────────────────────────────────
 
     private fun computePatterns() {
-        val recs = _records.value
-        if (recs.isEmpty()) return
-        val now = System.currentTimeMillis()
-        val days14 = now - 14 * 86400000L
-        val msgs = mutableListOf<PatternMessage>()
-
-        val feedRecs = recs.filter { (it.type == "formula" || it.type == "breast") && DateUtils.parseIso(it.startTime) > days14 }
-            .sortedBy { it.startTime }
-        if (feedRecs.size >= 5) {
-            val gaps = (1 until feedRecs.size).mapNotNull { i ->
-                val g = (DateUtils.parseIso(feedRecs[i].startTime) - DateUtils.parseIso(feedRecs[i - 1].startTime)) / 60000
-                if (g in 30..360) g.toInt() else null
-            }
-            if (gaps.size >= 5) {
-                val median = gaps.sorted()[gaps.size / 2]
-                val lastFeedTime = DateUtils.parseIso(feedRecs.last().startTime)
-                val remaining = ((lastFeedTime + median * 60000L - now) / 60000).toInt()
-                if (remaining in 0..60) msgs.add(PatternMessage("💡 평소 패턴상 약 ${remaining}분 안에 배고픔 신호가 올 수 있어요"))
-            }
-        }
-
-        val lastFeed = recs.filter { it.type == "formula" || it.type == "breast" }.maxByOrNull { it.startTime }
-        if (lastFeed != null) {
-            val hoursAgo = (now - DateUtils.parseIso(lastFeed.startTime)) / 3600000.0
-            if (hoursAgo >= 3.0) msgs.add(PatternMessage("⚠️ 마지막 수유 ${hoursAgo.toInt()}시간 경과 — 수유 시간이에요!"))
-        }
-
-        _patternMessages.value = msgs
+    _patternMessages.value = computePatternMessagesUseCase(_records.value)
     }
+}
+
+class LogViewModel : ViewModel() {
+
+    private val logRepo  = LogRepository()
+    private val babyRepo = BabyRepository()
+    private val authRepo = AuthRepository()
+    private val computePatternMessagesUseCase = ComputePatternMessagesUseCase()
 }
