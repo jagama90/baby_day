@@ -1,6 +1,6 @@
 'use client'
 
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 
 type NativePreferences = {
   get: (options: { key: string }) => Promise<{ value: string | null }>
@@ -8,28 +8,16 @@ type NativePreferences = {
   remove: (options: { key: string }) => Promise<void>
 }
 
+const Preferences = registerPlugin<NativePreferences>('Preferences')
+
 const STORAGE_KEY_REGISTRY = '__babyday_storage_keys__'
 
-const getNativePreferences = (): NativePreferences | null => {
+const getNativePreferences = () => {
   if (typeof window === 'undefined') return null
-  if (!Capacitor.isNativePlatform()) return null
-
-  const maybePreferences = (window as typeof window & {
-    Capacitor?: { Plugins?: { Preferences?: NativePreferences } }
-  }).Capacitor?.Plugins?.Preferences
-
-  return maybePreferences ?? null
+  return Capacitor.isNativePlatform() ? Preferences : null
 }
 
-const addWebStorageKey = (key: string) => {
-  const raw = window.localStorage.getItem(STORAGE_KEY_REGISTRY)
-  const keys = raw ? new Set(JSON.parse(raw) as string[]) : new Set<string>()
-  keys.add(key)
-  window.localStorage.setItem(STORAGE_KEY_REGISTRY, JSON.stringify([...keys]))
-}
-
-const getTrackedWebStorageKeys = (): string[] => {
-  const raw = window.localStorage.getItem(STORAGE_KEY_REGISTRY)
+const readRegistryFromRaw = (raw: string | null): string[] => {
   if (!raw) return []
 
   try {
@@ -40,6 +28,37 @@ const getTrackedWebStorageKeys = (): string[] => {
   }
 }
 
+const getTrackedStorageKeys = async (): Promise<string[]> => {
+  const preferences = getNativePreferences()
+  if (preferences) {
+    const { value } = await preferences.get({ key: STORAGE_KEY_REGISTRY })
+    return readRegistryFromRaw(value)
+  }
+
+  if (typeof window === 'undefined') return []
+  return readRegistryFromRaw(window.localStorage.getItem(STORAGE_KEY_REGISTRY))
+}
+
+const setTrackedStorageKeys = async (keys: string[]): Promise<void> => {
+  const normalized = [...new Set(keys)]
+  const value = JSON.stringify(normalized)
+  const preferences = getNativePreferences()
+
+  if (preferences) {
+    await preferences.set({ key: STORAGE_KEY_REGISTRY, value })
+    return
+  }
+
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(STORAGE_KEY_REGISTRY, value)
+}
+
+const addStorageKeyToRegistry = async (key: string): Promise<void> => {
+  const keys = await getTrackedStorageKeys()
+  if (keys.includes(key)) return
+  keys.push(key)
+  await setTrackedStorageKeys(keys)
+}
 
 export const getStoredValue = async (key: string): Promise<string | null> => {
   const preferences = getNativePreferences()
@@ -55,27 +74,25 @@ export const getStoredValue = async (key: string): Promise<string | null> => {
 export const setStoredValue = async (key: string, value: string): Promise<void> => {
   const preferences = getNativePreferences()
   if (preferences) {
-    await preferences.set({ key, value })
+    await addStorageKeyToRegistry(key)
     return
   }
 
   if (typeof window === 'undefined') return
   window.localStorage.setItem(key, value)
-  addWebStorageKey(key)
+  await addStorageKeyToRegistry(key)
 }
 
 export const clearStoredValues = async (): Promise<void> => {
+  const keys = await getTrackedStorageKeys()
   const preferences = getNativePreferences()
   if (preferences) {
-    if (typeof window === 'undefined') return
-    const keys = getTrackedWebStorageKeys()
     await Promise.all(keys.map((key) => preferences.remove({ key })))
+    await preferences.remove({ key: STORAGE_KEY_REGISTRY })
     return
   }
 
   if (typeof window === 'undefined') return
-  
-  const keys = getTrackedWebStorageKeys()
   keys.forEach((key) => window.localStorage.removeItem(key))
   window.localStorage.removeItem(STORAGE_KEY_REGISTRY)
 }

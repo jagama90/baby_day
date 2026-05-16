@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(git *)",
+      "Bash(./gradlew assembleDebug)",
+      "PowerShell(gradle *)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(head *)"
+    ]
+  }
+}
