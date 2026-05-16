@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.babyday.app.data.model.BabyRecord
+import com.babyday.app.domain.PatternMessage
 import com.babyday.app.ui.screens.baby.BabyProfileSheet
 import com.babyday.app.ui.screens.log.components.*
 import com.babyday.app.ui.screens.log.components.sheets.*
@@ -93,25 +94,11 @@ fun LogScreen(
     ) {
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
-            floatingActionButton = {
-                Column(
-                    modifier = Modifier
-                        .padding(bottom = 0.dp)
-                        .width(200.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    VoiceInputButton(
-                        onResult = { vm.handleVoice(it) }
-                    )
-                    FloatingActionButton(
-                        onClick = { addSheetType = "formula"; showAddSheet = true },
-                        containerColor = Primary
-                    ) {
-                        Text("+", fontSize = 24.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                    }
+            bottomBar = {
+                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    VoiceInputButton(onResult = { vm.handleVoice(it) })
                 }
-            },
-            floatingActionButtonPosition = FabPosition.End
+            }
         ) { padding ->
             Column(
                 modifier = Modifier
@@ -211,6 +198,20 @@ fun LogScreen(
                     }
                 }
 
+                // ── QUICK BUTTONS (탭 위에 항상 표시) ──
+                if (currentBabyId != null) {
+                    QuickButtons(
+                        onSleep       = { vm.quickAdd("sleep") },
+                        onFormula     = { addSheetType = "formula"; showAddSheet = true },
+                        onBreast      = { addSheetType = "breast";  showAddSheet = true },
+                        onDiaperUrine = { vm.quickAdd("diaper", "urine") },
+                        onDiaperStool = { vm.quickAdd("diaper", "stool") },
+                        onDiaperBoth  = { vm.quickAdd("diaper", "both") },
+                        onBath        = { vm.quickAdd("bath") },
+                        isSleepOngoing = sleepOngoing
+                    )
+                }
+
                 when (currentTab) {
                     0 -> HomeTabContent(
                         records = records,
@@ -229,15 +230,7 @@ fun LogScreen(
                         },
                         showToast = vm::showToast,
                         currentBabyId = currentBabyId,
-                        sleepOngoing = sleepOngoing,
                         patternMessages = patternMessages,
-                        onSleep = { vm.quickAdd("sleep") },
-                        onFormula = { addSheetType = "formula"; showAddSheet = true },
-                        onBreast  = { addSheetType = "breast";  showAddSheet = true },
-                        onDiaperUrine = { vm.quickAdd("diaper", "urine") },
-                        onDiaperStool = { vm.quickAdd("diaper", "stool") },
-                        onDiaperBoth  = { vm.quickAdd("diaper", "both") },
-                        onBath        = { vm.quickAdd("bath") }
                     )
                     1 -> StatsTab(records = records, babyBirth = babyBirth)
                     2 -> GrowthTab(
@@ -321,15 +314,7 @@ private fun HomeTabContent(
     onEditRecord: (BabyRecord) -> Unit,
     showToast: (String) -> Unit,
     currentBabyId: String?,
-    sleepOngoing: Boolean,
     patternMessages: List<PatternMessage>,
-    onSleep: () -> Unit,
-    onFormula: () -> Unit,
-    onBreast: () -> Unit,
-    onDiaperUrine: () -> Unit,
-    onDiaperStool: () -> Unit,
-    onDiaperBoth: () -> Unit,
-    onBath: () -> Unit
 ) {
     if (currentBabyId == null) {
         Box(
@@ -350,17 +335,6 @@ private fun HomeTabContent(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        QuickButtons(
-            onSleep = onSleep,
-            onFormula = onFormula,
-            onBreast = onBreast,
-            onDiaperUrine = onDiaperUrine,
-            onDiaperStool = onDiaperStool,
-            onDiaperBoth = onDiaperBoth,
-            onBath = onBath,
-            isSleepOngoing = sleepOngoing
-        )
-
         // Pattern messages
         if (patternMessages.isNotEmpty()) {
             patternMessages.take(2).forEach { msg ->
@@ -377,7 +351,7 @@ private fun HomeTabContent(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 160.dp)
+            contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             item { DateNavigator(selDate = selDate, onDateChange = onDateChange) }
             item { SummaryChips(records = dayRecs) }

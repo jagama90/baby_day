@@ -14,21 +14,20 @@ import com.babyday.app.ui.screens.log.LogScreen
 import com.babyday.app.ui.screens.login.LoginScreen
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.first
 
 @Composable
 fun AppNavigation() {
-    val navController = rememberNavController()
     val auth = SupabaseClientProvider.client.auth
     val sessionStatus by auth.sessionStatus.collectAsStateWithLifecycle(
         initialValue = SessionStatus.Initializing
     )
 
-    val startDestination = when (sessionStatus) {
-        is SessionStatus.Authenticated -> NavRoutes.Log.route
-        else -> NavRoutes.Login.route
-    }
+    // 세션 확인 중에는 아무것도 렌더하지 않음 (스플래시 스크린이 유지됨)
+    if (sessionStatus is SessionStatus.Initializing) return
+
+    val navController = rememberNavController()
+    val startDestination = if (sessionStatus is SessionStatus.Authenticated)
+        NavRoutes.Log.route else NavRoutes.Login.route
 
     NavHost(navController = navController, startDestination = startDestination) {
         composable(NavRoutes.Login.route) {
@@ -60,7 +59,7 @@ fun AppNavigation() {
         }
     }
 
-    // React to auth state changes for auto-redirect
+    // 로그아웃 등 런타임 auth 변경에 대응
     LaunchedEffect(sessionStatus) {
         when (sessionStatus) {
             is SessionStatus.Authenticated -> {

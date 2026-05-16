@@ -12,6 +12,7 @@ import io.github.jan.supabase.postgrest.query.Order
 class LogRepository {
 
     private val client get() = SupabaseClientProvider.client
+    private val userRepository = UserRepository()
 
     
     sealed class LogFetchResult {
@@ -31,15 +32,19 @@ class LogRepository {
             val dao = BabyDayDatabase.getInstance(BabyDayApp.instance).babyRecordDao()
             dao.deleteAll(babyId)
             dao.insertAll(fresh.map { it.toEntity() })
-            fresh
+            LogFetchResult.Fresh(fresh)
         } catch (e: Exception) {
             // Fallback to cache
             val dao = BabyDayDatabase.getInstance(BabyDayApp.instance).babyRecordDao()
-            dao.getRecords(babyId).map { it.toModel() }
+            LogFetchResult.Cached(
+                data = dao.getRecords(babyId).map { it.toModel() },
+                reason = e
+            )
         }
     }
 
     suspend fun createLog(record: Map<String, Any?>): BabyRecord {
+        userRepository.ensureCurrentUserProfile()
         return client.from("baby_logs").insert(record).decodeSingle()
     }
 

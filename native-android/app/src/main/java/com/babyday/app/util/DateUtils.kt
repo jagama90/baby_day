@@ -1,6 +1,9 @@
 package com.babyday.app.util
 
 import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 
@@ -16,10 +19,12 @@ object DateUtils {
     }.getOrDefault("--:--")
 
     fun parseIso(iso: String): Long = runCatching {
-        val clean = iso.replace(Regex("\\+\\d{2}:\\d{2}$"), "+0000")
-            .replace("Z", "+0000")
-        val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.getDefault())
-        fmt.parse(clean)?.time ?: 0L
+        OffsetDateTime.parse(iso).toInstant().toEpochMilli()
+    }.recoverCatching {
+        LocalDateTime.parse(iso)
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
     }.getOrDefault(0L)
 
     fun elapsed(isoStr: String): String {

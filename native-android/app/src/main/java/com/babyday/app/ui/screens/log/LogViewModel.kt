@@ -8,6 +8,9 @@ import com.babyday.app.data.remote.SupabaseClientProvider
 import com.babyday.app.data.repository.AuthRepository
 import com.babyday.app.data.repository.BabyRepository
 import com.babyday.app.data.repository.LogRepository
+import com.babyday.app.data.repository.LogRepository.LogFetchResult
+import com.babyday.app.domain.ComputePatternMessagesUseCase
+import com.babyday.app.domain.PatternMessage
 import com.babyday.app.ui.AppState
 import com.babyday.app.util.DateUtils
 import com.babyday.app.util.LogUtils
@@ -18,7 +21,6 @@ import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import com.babyday.app.domain.ComputePatternMessagesUseCase
 
 private val isoFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
@@ -26,13 +28,12 @@ private fun nowIso(): String {
     return OffsetDateTime.now(ZoneId.systemDefault()).format(isoFormatter)
 }
 
-data class PatternMessage(val text: String)
-
 class LogViewModel : ViewModel() {
 
     private val logRepo  = LogRepository()
     private val babyRepo = BabyRepository()
     private val authRepo = AuthRepository()
+    private val computePatternMessagesUseCase = ComputePatternMessagesUseCase()
 
     private val _records = MutableStateFlow<List<BabyRecord>>(emptyList())
     val records: StateFlow<List<BabyRecord>> = _records
@@ -142,7 +143,7 @@ class LogViewModel : ViewModel() {
         viewModelScope.launch {
             runCatching { logRepo.deleteLog(id) }
                 .onSuccess { _records.value = _records.value.filter { it.id != id }; showToast("삭제됨") }
-                .onFailure { showToast("삭제 실패") }
+                .onFailure { showToast("DB 삭제 정책 확인 전까지 아기 삭제는 비활성화되어 있어요") }
         }
     }
 
@@ -293,8 +294,9 @@ class LogViewModel : ViewModel() {
     }
 
     fun deleteBaby(babyId: String) {
+        val userId = SupabaseClientProvider.client.auth.currentUserOrNull()?.id ?: return
         viewModelScope.launch {
-            runCatching { babyRepo.deleteBaby(babyId) }
+            runCatching { babyRepo.deleteBaby(babyId, userId) }
                 .onSuccess {
                     _babies.value = _babies.value.filter { it.babyId != babyId }
                     if (_currentBabyId.value == babyId) {
@@ -392,14 +394,6 @@ class LogViewModel : ViewModel() {
     // ─── PATTERN PREDICTION ───────────────────────────────────────────────────
 
     private fun computePatterns() {
-    _patternMessages.value = computePatternMessagesUseCase(_records.value)
+        _patternMessages.value = computePatternMessagesUseCase(_records.value)
     }
-}
-
-class LogViewModel : ViewModel() {
-
-    private val logRepo  = LogRepository()
-    private val babyRepo = BabyRepository()
-    private val authRepo = AuthRepository()
-    private val computePatternMessagesUseCase = ComputePatternMessagesUseCase()
 }

@@ -25,8 +25,10 @@ class SettingsDataStore(private val context: Context) {
         val LAST_BABY_ID    = stringPreferencesKey("last_baby_id")
     }
 
-    val settings: Flow<Map<Preferences.Key<String>, String>> = context.dataStore.data
-        .map { prefs -> prefs.asMap().filterKeys { it is Preferences.Key<*> }.mapKeys { it.key as Preferences.Key<String> }.mapValues { it.value.toString() } }
+    val settings: Flow<Map<String, String>> = context.dataStore.data
+        .map { prefs ->
+            prefs.asMap().mapKeys { it.key.name }.mapValues { it.value.toString() }
+        }
 
     val lastBabyId: Flow<String?> = context.dataStore.data
         .map { it[LAST_BABY_ID] }

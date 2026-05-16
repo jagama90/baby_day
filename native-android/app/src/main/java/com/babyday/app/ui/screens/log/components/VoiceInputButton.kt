@@ -30,6 +30,9 @@ fun VoiceInputButton(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isRecognitionAvailable = remember {
+        SpeechRecognizer.isRecognitionAvailable(context)
+    }
     var isListening by remember { mutableStateOf(false) }
     var recognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
 
@@ -47,8 +50,13 @@ fun VoiceInputButton(
     }
 
     DisposableEffect(Unit) {
-        recognizer = SpeechRecognizer.createSpeechRecognizer(context)
-        onDispose { recognizer?.destroy() }
+        if (isRecognitionAvailable) {
+            recognizer = SpeechRecognizer.createSpeechRecognizer(context)
+        }
+        onDispose {
+            recognizer?.destroy()
+            recognizer = null
+        }
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -61,6 +69,7 @@ fun VoiceInputButton(
 
     Button(
         onClick = {
+            if (!isRecognitionAvailable) return@Button
             if (isListening) {
                 recognizer?.stopListening()
                 isListening = false
@@ -79,6 +88,7 @@ fun VoiceInputButton(
                 permLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
         },
+        enabled = isRecognitionAvailable,
         modifier = modifier.fillMaxWidth().height(56.dp),
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(
@@ -86,7 +96,11 @@ fun VoiceInputButton(
         )
     ) {
         Text(
-            text = if (isListening) "🔴 듣는 중..." else "🎙 음성 입력",
+            text = when {
+                !isRecognitionAvailable -> "음성 입력 미지원"
+                isListening -> "🔴 듣는 중..."
+                else -> "🎙 음성 입력"
+            },
             fontSize = 17.sp, fontWeight = FontWeight.ExtraBold,
             color = Color.White.copy(alpha = if (isListening) alpha else 1f)
         )

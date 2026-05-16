@@ -14,7 +14,6 @@ abstract class BabyDayDatabase : RoomDatabase() {
         fun getInstance(context: Context): BabyDayDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(context.applicationContext, BabyDayDatabase::class.java, "babyday.db")
-                    .fallbackToDestructiveMigration()
                     .build().also { INSTANCE = it }
             }
         }

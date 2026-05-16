@@ -1,8 +1,5 @@
 package com.babyday.app.data.repository
 
-import android.content.Context
-import android.net.Uri
-import androidx.browser.customtabs.CustomTabsIntent
 import com.babyday.app.data.remote.SupabaseClientProvider
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
@@ -13,20 +10,12 @@ class AuthRepository {
 
     private val auth get() = SupabaseClientProvider.client.auth
 
-    fun signInWithGoogle(context: Context) {
-        val url = auth.getOAuthUrl(Google, "babyday://auth/callback")
-        CustomTabsIntent.Builder()
-            .setShowTitle(false)
-            .build()
-            .launchUrl(context, Uri.parse(url))
+    suspend fun signInWithGoogle() {
+        auth.signInWith(Google, SupabaseClientProvider.AUTH_REDIRECT_URL)
     }
 
-    fun signInWithKakao(context: Context) {
-        val url = auth.getOAuthUrl(Kakao, "babyday://auth/callback")
-        CustomTabsIntent.Builder()
-            .setShowTitle(false)
-            .build()
-            .launchUrl(context, Uri.parse(url))
+    suspend fun signInWithKakao() {
+        auth.signInWith(Kakao, SupabaseClientProvider.AUTH_REDIRECT_URL)
     }
 
     suspend fun getCurrentUser(): UserInfo? = runCatching {

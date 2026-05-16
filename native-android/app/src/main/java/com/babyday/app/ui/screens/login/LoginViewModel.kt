@@ -22,7 +22,7 @@ class LoginViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            runCatching { authRepository.signInWithGoogle(context) }
+            runCatching { authRepository.signInWithGoogle() }
                 .onFailure { _error.value = it.message }
             _isLoading.value = false
         }
@@ -32,7 +32,7 @@ class LoginViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            runCatching { authRepository.signInWithKakao(context) }
+            runCatching { authRepository.signInWithKakao() }
                 .onFailure { _error.value = it.message }
             _isLoading.value = false
         }

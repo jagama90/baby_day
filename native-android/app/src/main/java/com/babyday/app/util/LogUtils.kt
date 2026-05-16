@@ -29,7 +29,7 @@ object LogUtils {
             "sleep" -> {
                 val tag = if (r.sleepKind == "nap") "낮잠" else "밤잠"
                 if (r.endTime != null) "$tag · ${DateUtils.durLabel(DateUtils.durMin(r.startTime, r.endTime))}"
-                else "$tag · 진행 중 ⏱"
+                else "$tag · 진행 중"
             }
             "formula" -> "${r.ml ?: 0}ml"
             "breast" -> buildList {
@@ -41,7 +41,7 @@ object LogUtils {
             "diaper" -> when (r.diaperKind) {
                 "urine" -> "💧 소변"
                 "stool" -> "💩 대변"
-                "both" -> "🔄 소변+대변"
+                "both" -> "💧💩 소변+대변"
                 else -> "기저귀"
             }
             "growth" -> buildList {

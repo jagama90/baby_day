@@ -11,7 +11,8 @@
    // implementation(platform("com.google.firebase:firebase-bom:33.14.0"))  →  활성화
    // implementation("com.google.firebase:firebase-messaging-ktx")          →  활성화
    ```
-6. `service/BabyDayFirebaseService.kt` 에서 FirebaseMessagingService 주석 해제
+6. FirebaseMessagingService 기반 수신 서비스를 새로 구현하고 AndroidManifest.xml에 등록
+7. 알림 기능을 구현한 뒤 `POST_NOTIFICATIONS` 권한 선언과 Android 13+ 런타임 요청을 추가
 
 ## Kakao OAuth 설정
 1. Kakao Developers 콘솔에서 앱 생성 (https://developers.kakao.com)
@@ -50,7 +51,8 @@ key.password=YOUR_KEY_PASSWORD
 - [ ] google-services.json 배치 완료
 - [ ] kakao.native_app_key 실제 값 입력
 - [ ] Firebase 의존성 주석 해제
-- [ ] BabyDayFirebaseService 주석 해제
+- [ ] FirebaseMessagingService 수신 서비스 구현 및 Manifest 등록
+- [ ] 알림 기능 구현 후 POST_NOTIFICATIONS 권한 요청 추가
 - [ ] 앱 서명 키스토어 설정
 - [ ] proguard-rules.pro Kakao/Supabase 규칙 추가
 - [ ] targetSdk 35 Play Store 정책 준수 확인
