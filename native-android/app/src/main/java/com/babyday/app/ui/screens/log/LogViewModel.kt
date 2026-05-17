@@ -17,10 +17,14 @@ import com.babyday.app.ui.AppState
 import com.babyday.app.util.DateUtils
 import com.babyday.app.util.LogUtils
 import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -76,13 +80,51 @@ class LogViewModel : ViewModel() {
     fun initialize(initialBabyId: String?) {
         viewModelScope.launch {
             val userId = SupabaseClientProvider.client.auth.currentUserOrNull()?.id ?: return@launch
-            runCatching { babyRepo.getBabiesForUser(userId) }
-                .onSuccess { members ->
-                    _babies.value = members
-                    val targetId = initialBabyId ?: members.firstOrNull()?.babyId
-                    targetId?.let { selectBaby(it) }
+            val result = runCatching { babyRepo.getBabiesForUser(userId) }
+            result.onSuccess { members ->
+                _babies.value = members
+                runCatching {
+                    settingsDataStore.save(SettingsDataStore.BABIES_CACHE, Json.encodeToString(members))
                 }
-                .onFailure { _syncState.value = SyncState.DISCONNECTED }
+                val targetId = initialBabyId ?: members.firstOrNull()?.babyId
+                targetId?.let { selectBaby(it) }
+            }.onFailure {
+                // Fall back to cached babies so UI is usable offline
+                val cached = runCatching {
+                    val prefs = settingsDataStore.settings.first()
+                    val json = prefs["babies_cache"] ?: ""
+                    if (json.isEmpty()) emptyList()
+                    else Json.decodeFromString<List<BabyMember>>(json)
+                }.getOrDefault(emptyList<BabyMember>())
+
+                if (cached.isNotEmpty()) {
+                    _babies.value = cached
+                    val targetId = initialBabyId ?: cached.firstOrNull()?.babyId
+                    targetId?.let { selectBaby(it) }
+                } else {
+                    _syncState.value = SyncState.DISCONNECTED
+                }
+            }
+
+            // Background retry: if network failed, try again after 8 s
+            if (result.isFailure) {
+                launch {
+                    delay(8_000L)
+                    runCatching { babyRepo.getBabiesForUser(userId) }
+                        .onSuccess { members ->
+                            _babies.value = members
+                            runCatching {
+                                settingsDataStore.save(SettingsDataStore.BABIES_CACHE, Json.encodeToString(members))
+                            }
+                            if (_currentBabyId.value == null) {
+                                val targetId = initialBabyId ?: members.firstOrNull()?.babyId
+                                targetId?.let { selectBaby(it) }
+                            } else {
+                                loadLogs(_currentBabyId.value!!)
+                            }
+                        }
+                }
+            }
         }
     }
 

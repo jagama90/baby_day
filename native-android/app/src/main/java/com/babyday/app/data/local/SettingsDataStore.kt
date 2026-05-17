@@ -23,6 +23,7 @@ class SettingsDataStore(private val context: Context) {
         val BABY_WEIGHT     = stringPreferencesKey("baby_weight")
         val AVG_FORMULA_ML  = stringPreferencesKey("avg_formula_ml")
         val LAST_BABY_ID    = stringPreferencesKey("last_baby_id")
+        val BABIES_CACHE    = stringPreferencesKey("babies_cache")
     }
 
     val settings: Flow<Map<String, String>> = context.dataStore.data

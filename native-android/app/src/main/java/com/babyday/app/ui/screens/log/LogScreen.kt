@@ -21,7 +21,7 @@ import com.babyday.app.domain.PatternMessage
 import com.babyday.app.ui.screens.baby.BabyProfileSheet
 import com.babyday.app.ui.screens.log.components.*
 import com.babyday.app.ui.screens.log.components.sheets.*
-import com.babyday.app.ui.theme.Primary
+import com.babyday.app.ui.theme.*
 import com.babyday.app.util.DateUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -375,6 +375,7 @@ private fun HomeTabContent(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
+            item { LastActivityCards(records = records) }
             item { DateNavigator(selDate = selDate, onDateChange = onDateChange) }
             item { SummaryChips(records = dayRecs) }
 
@@ -462,6 +463,57 @@ private fun SummaryChips(records: List<BabyRecord>) {
         if (feedCount > 0) SummaryChip("🤱 ${feedCount}회", com.babyday.app.ui.theme.BreastBg, com.babyday.app.ui.theme.BreastColor)
         if (diaperCount > 0) SummaryChip("💧 ${diaperCount}회", com.babyday.app.ui.theme.DiaperBg, com.babyday.app.ui.theme.DiaperColor)
         if (bathCount > 0) SummaryChip("🛁 ${bathCount}회", com.babyday.app.ui.theme.BathBg, com.babyday.app.ui.theme.BathColor)
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+}
+
+@Composable
+private fun LastActivityCards(records: List<BabyRecord>) {
+    data class ActivityItem(
+        val title: String, val elapsed: String, val detail: String,
+        val bg: Color, val fg: Color
+    )
+    val items = buildList {
+        records.filter { it.type == "diaper" }.maxByOrNull { it.startTime }?.let { r ->
+            val detail = when (r.diaperKind) {
+                "stool" -> "💩 대변"
+                "both"  -> "💧💩 둘다"
+                else    -> "💧 소변"
+            }
+            add(ActivityItem("마지막 기저귀", DateUtils.elapsed(r.startTime), detail, DiaperBg, DiaperColor))
+        }
+        records.filter { it.type == "formula" }.maxByOrNull { it.startTime }?.let { r ->
+            add(ActivityItem("마지막 분유", DateUtils.elapsed(r.startTime), "${r.ml ?: 0}ml", FormulaBg, FormulaColor))
+        }
+        records.filter { it.type == "breast" }.maxByOrNull { it.startTime }?.let { r ->
+            val total = (r.leftMin ?: 0) + (r.rightMin ?: 0)
+            val detail = if ((r.leftMin ?: 0) > 0) "왼쪽 ${r.leftMin}분 · 총 ${total}분" else "총 ${total}분"
+            add(ActivityItem("마지막 모유", DateUtils.elapsed(r.startTime), detail, BreastBg, BreastColor))
+        }
+    }
+    if (items.isEmpty()) return
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items.forEach { item ->
+            Card(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = item.bg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Text(item.title, fontSize = 10.sp, color = item.fg.copy(alpha = 0.7f))
+                    Spacer(Modifier.height(2.dp))
+                    Text(item.elapsed, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = item.fg)
+                    Text(item.detail, fontSize = 10.sp, color = item.fg.copy(alpha = 0.8f))
+                }
+            }
+        }
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
 }
