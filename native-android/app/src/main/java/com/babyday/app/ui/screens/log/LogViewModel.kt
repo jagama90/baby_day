@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.babyday.app.data.model.BabyMember
 import com.babyday.app.data.model.BabyRecord
+import com.babyday.app.BabyDayApp
+import com.babyday.app.data.local.SettingsDataStore
 import com.babyday.app.data.remote.SupabaseClientProvider
 import com.babyday.app.data.repository.AuthRepository
 import com.babyday.app.data.repository.BabyRepository
@@ -17,6 +19,7 @@ import com.babyday.app.util.LogUtils
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -34,6 +37,7 @@ class LogViewModel : ViewModel() {
     private val babyRepo = BabyRepository()
     private val authRepo = AuthRepository()
     private val computePatternMessagesUseCase = ComputePatternMessagesUseCase()
+    private val settingsDataStore = SettingsDataStore(BabyDayApp.instance)
 
     private val _records = MutableStateFlow<List<BabyRecord>>(emptyList())
     val records: StateFlow<List<BabyRecord>> = _records
@@ -57,6 +61,17 @@ class LogViewModel : ViewModel() {
     val patternMessages: StateFlow<List<PatternMessage>> = _patternMessages
 
     enum class SyncState { CONNECTED, DISCONNECTED, LOADING }
+
+    init {
+        viewModelScope.launch {
+            runCatching {
+                val prefs = settingsDataStore.settings.first()
+                val saved = prefs["dark_mode"] == "1"
+                _darkMode.value = saved
+                AppState.setDarkMode(saved)
+            }
+        }
+    }
 
     fun initialize(initialBabyId: String?) {
         viewModelScope.launch {
@@ -101,6 +116,9 @@ class LogViewModel : ViewModel() {
     fun setDarkMode(on: Boolean) {
         _darkMode.value = on
         AppState.setDarkMode(on)
+        viewModelScope.launch {
+            settingsDataStore.save(SettingsDataStore.DARK_MODE, if (on) "1" else "0")
+        }
     }
 
     suspend fun signOut() = authRepo.signOut()
@@ -392,6 +410,8 @@ class LogViewModel : ViewModel() {
     }
 
     // ─── PATTERN PREDICTION ───────────────────────────────────────────────────
+
+    fun refreshPatterns() { computePatterns() }
 
     private fun computePatterns() {
         _patternMessages.value = computePatternMessagesUseCase(_records.value)

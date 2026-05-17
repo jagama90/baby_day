@@ -23,6 +23,7 @@ import com.babyday.app.ui.screens.log.components.*
 import com.babyday.app.ui.screens.log.components.sheets.*
 import com.babyday.app.ui.theme.Primary
 import com.babyday.app.util.DateUtils
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Date
 
@@ -56,6 +57,23 @@ fun LogScreen(
     var showBabyProfile by remember { mutableStateOf<com.babyday.app.data.model.BabyMember?>(null) }
 
     LaunchedEffect(Unit) { vm.initialize(initialBabyId) }
+
+    // Tick every second to update ongoing sleep timer labels
+    var sleepTimerTick by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000L)
+            sleepTimerTick = System.currentTimeMillis()
+        }
+    }
+
+    // Refresh pattern messages every minute so warnings stay accurate
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60_000L)
+            vm.refreshPatterns()
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(toast) {
@@ -231,6 +249,7 @@ fun LogScreen(
                         showToast = vm::showToast,
                         currentBabyId = currentBabyId,
                         patternMessages = patternMessages,
+                        sleepTimerTick = sleepTimerTick,
                     )
                     1 -> StatsTab(records = records, babyBirth = babyBirth)
                     2 -> GrowthTab(
@@ -315,6 +334,7 @@ private fun HomeTabContent(
     showToast: (String) -> Unit,
     currentBabyId: String?,
     patternMessages: List<PatternMessage>,
+    sleepTimerTick: Long,
 ) {
     if (currentBabyId == null) {
         Box(
@@ -338,13 +358,15 @@ private fun HomeTabContent(
         // Pattern messages
         if (patternMessages.isNotEmpty()) {
             patternMessages.take(2).forEach { msg ->
+                val bg = if (msg.isWarning) Color(0xFFFFF3CD) else com.babyday.app.ui.theme.PrimaryLight
+                val fg = if (msg.isWarning) Color(0xFF856404) else Primary
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(com.babyday.app.ui.theme.PrimaryLight)
+                        .background(bg)
                         .padding(horizontal = 16.dp, vertical = 6.dp)
                 ) {
-                    Text(msg.text, fontSize = 12.sp, color = Primary)
+                    Text(msg.text, fontSize = 12.sp, color = fg)
                 }
             }
         }
@@ -372,8 +394,13 @@ private fun HomeTabContent(
             } else {
                 items(dayRecs, key = { it.id }) { record ->
                     val editable = record.type in listOf("formula", "breast", "diaper", "sleep")
+                    val sleepLabel = if (record.type == "sleep" && record.endTime == null) {
+                        val mins = ((sleepTimerTick - DateUtils.parseIso(record.startTime)) / 60000L).toInt()
+                        "진행 중 · ${DateUtils.durLabel(mins)}"
+                    } else null
                     LogCard(
                         record = record,
+                        sleepTimerLabel = sleepLabel,
                         onClick = if (editable) ({ onEditRecord(record) }) else null,
                         onDelete = { onDeleteRecord(record.id) }
                     )
